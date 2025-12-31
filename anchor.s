@@ -1,6 +1,10 @@
 // anchor.s - ARM64 Assembly heartbeat monitoring
 // CPU affinity maintenance for trading nodes
 // NO-OP loop implementation
+//
+// NOTE: This infinite loop is intentional for CPU affinity maintenance.
+// It ensures dedicated CPU core availability for time-critical trading operations.
+// Deploy in a containerized environment with CPU limits to control resource usage.
 
 .global _start
 .align 2

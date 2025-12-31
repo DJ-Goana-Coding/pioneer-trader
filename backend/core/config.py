@@ -19,6 +19,20 @@ class Settings(BaseSettings):
     # Risk
     MAX_ORDER_NOTIONAL: float = 100.0  # Safety clamp in USDT
     
+    # V19 Fleet Configuration
+    UI_THEME: Literal["OVERKILL", "ZEN"] = "OVERKILL"
+    SAFETY_MODULATOR: int = 5  # 0-10 scale for trade aggression
+    ENABLE_GITHUB_AUTH: bool = False
+    GITHUB_CLIENT_ID: str = ""
+    
+    # Swarm Configuration
+    PHI_DRONE_COUNT: int = 6
+    ENABLE_MALWARE_PROTECTION: bool = True
+    
+    # Archival
+    ENABLE_GITHUB_PAGES_EXPORT: bool = False
+    SHADOW_ARCHIVE_PATH: str = "/tmp/shadow_archive"
+    
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 settings = Settings()

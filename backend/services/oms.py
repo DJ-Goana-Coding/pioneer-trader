@@ -15,9 +15,17 @@ class OMS:
         current_price = ticker['last']
         notional_value = amount * current_price
 
-        # 3. Risk Clamp
-        if notional_value > settings.MAX_ORDER_NOTIONAL:
-            raise ValueError(f"Order rejected: Notional value {notional_value} exceeds limit {settings.MAX_ORDER_NOTIONAL}")
+        # 3. Risk Clamp - adjusted by safety modulator
+        # Safety modulator scales the risk: 0 = most conservative, 10 = full limit
+        safety_factor = (settings.SAFETY_MODULATOR + 1) / 11  # 0.09 to 1.0
+        adjusted_limit = settings.MAX_ORDER_NOTIONAL * safety_factor
+        
+        if notional_value > adjusted_limit:
+            raise ValueError(
+                f"Order rejected: Notional value {notional_value:.2f} exceeds "
+                f"safety-adjusted limit {adjusted_limit:.2f} "
+                f"(Safety Modulator: {settings.SAFETY_MODULATOR}/10)"
+            )
 
         # 4. Execute
         # The exchange service handles the PAPER/TESTNET/LIVE logic for the actual call

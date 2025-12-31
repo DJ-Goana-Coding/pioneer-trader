@@ -10,9 +10,12 @@ import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import time
+import numpy as np
+import os
 
 # Configuration
-API_URL = "http://localhost:8000"
+API_URL = os.getenv("API_URL", "http://localhost:8000")
+RANDOM_SEED = 42  # For reproducible sample data generation
 
 # Page Configuration
 st.set_page_config(
@@ -112,7 +115,7 @@ with st.sidebar:
     try:
         health = requests.get(f"{API_URL}/telemetry/health").json()
         st.metric("Backend", "Online", delta=health.get('mode', 'N/A'))
-    except:
+    except Exception as e:
         st.metric("Backend", "Offline", delta="ERROR")
     
     st.divider()
@@ -167,8 +170,7 @@ if st.session_state.token:
         """Generate sample market data"""
         dates = pd.date_range(end=datetime.now(), periods=100, freq='1h')
         # Simulate price movement
-        import numpy as np
-        np.random.seed(42)
+        np.random.seed(RANDOM_SEED)
         base_price = 45000 if 'BTC' in symbol else 3000
         prices = base_price + np.cumsum(np.random.randn(100) * 100)
         

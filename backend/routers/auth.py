@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from backend.core.security import create_access_token, get_current_user, verify_password, get_password_hash
@@ -75,7 +75,7 @@ async def initiate_github_device_flow():
             
             # Store device code for polling
             device_code_store[data["device_code"]] = {
-                "created_at": timedelta(seconds=0),
+                "created_at": datetime.now(),
                 "user_code": data["user_code"]
             }
             

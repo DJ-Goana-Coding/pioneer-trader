@@ -24,7 +24,8 @@ jobs:
       
       - name: Install dependencies
         run: |
-          npm ci
+          # Add npm ci when dependencies are added to package.json
+          echo "No dependencies to install yet"
       
       - name: Build project
         run: |

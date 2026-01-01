@@ -72,6 +72,12 @@ class RestAdaptor {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
+      // Handle empty responses (204 No Content, etc.)
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        return response.text();
+      }
+
       return await response.json();
     } catch (error) {
       clearTimeout(timeoutId);

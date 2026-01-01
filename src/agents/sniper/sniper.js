@@ -8,6 +8,7 @@ class SniperAgent {
     this.name = config.name || 'Sniper';
     this.precision = config.precision || 0.95;
     this.cooldown = config.cooldown || 1000;
+    this.minSuccessRate = config.minSuccessRate || 0.95;
     this.lastAction = 0;
     this.successRate = 0;
     this.totalActions = 0;
@@ -95,8 +96,8 @@ class SniperAgent {
   async _performAction(target, action) {
     return new Promise((resolve) => {
       setTimeout(() => {
-        // Simulate action with random success
-        const success = Math.random() > 0.05; // 95% success rate
+        // Simulate action with configurable success rate
+        const success = Math.random() > (1 - this.minSuccessRate);
         
         resolve({
           success,

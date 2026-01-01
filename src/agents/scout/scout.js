@@ -9,6 +9,7 @@ class ScoutAgent {
     this.interval = config.interval || 5000;
     this.sources = config.sources || [];
     this.discoveries = [];
+    this.maxDiscoveries = config.maxDiscoveries || 100;
     this.isRunning = false;
     this.intervalId = null;
   }
@@ -112,7 +113,7 @@ class ScoutAgent {
     console.log(`${this.name} discovered opportunity:`, discovery);
 
     // Keep only recent discoveries
-    if (this.discoveries.length > 100) {
+    if (this.discoveries.length > this.maxDiscoveries) {
       this.discoveries.shift();
     }
   }

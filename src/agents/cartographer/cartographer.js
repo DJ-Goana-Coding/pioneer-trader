@@ -61,7 +61,7 @@ class CartographerAgent {
     }
 
     if (!map.nodes.has(fromId) || !map.nodes.has(toId)) {
-      console.error(`Node not found`);
+      console.error(`Node '${fromId}' or '${toId}' not found in map '${mapId}'`);
       return false;
     }
 

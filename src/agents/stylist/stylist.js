@@ -27,7 +27,9 @@ class StylistAgent {
     // Add new theme stylesheet
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = `/src/themes/${themeName}/theme.css`;
+    // Use relative path for better portability
+    const basePath = document.querySelector('base')?.href || window.location.origin;
+    link.href = new URL(`src/themes/${themeName}/theme.css`, basePath).href;
     link.setAttribute('data-theme', themeName);
     document.head.appendChild(link);
 

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Governance Dashboard</title>
+    <link rel="stylesheet" href="../../themes/rainforest/theme.css">
+    <style>
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: var(--spacing-md);
+            padding: var(--spacing-lg);
+        }
+        .widget {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: var(--spacing-md);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Governance Dashboard</h1>
+    </header>
+    
+    <main class="dashboard-grid">
+        <div class="widget">
+            <h2>Proposals</h2>
+            <p>Active governance proposals</p>
+        </div>
+        
+        <div class="widget">
+            <h2>Voting Power</h2>
+            <p>Voting weight distribution</p>
+        </div>
+        
+        <div class="widget">
+            <h2>Decision History</h2>
+            <p>Past governance decisions</p>
+        </div>
+        
+        <div class="widget">
+            <h2>Participants</h2>
+            <p>Active governance participants</p>
+        </div>
+    </main>
+    
+    <script type="module">
+        // Future: Import governance-specific components
+        console.log('Governance Dashboard initialized');
+    </script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+/**
+ * Cyberpunk Theme
+ * Neon-infused, high-contrast theme inspired by cyberpunk aesthetics
+ */
+
+:root {
+  /* Color Palette */
+  --primary-color: #00ffff;
+  --secondary-color: #ff00ff;
+  --accent-color: #ffff00;
+  --background-color: #0a0a0a;
+  --surface-color: #1a1a2e;
+  --text-color: #e0e0e0;
+  --text-secondary: #a0a0a0;
+  --border-color: #00ffff;
+  --error-color: #ff0055;
+  --success-color: #00ff9f;
+  --warning-color: #ffaa00;
+  
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  
+  /* Typography */
+  --font-family: 'Courier New', monospace;
+  --font-size-sm: 12px;
+  --font-size-md: 14px;
+  --font-size-lg: 18px;
+  --font-size-xl: 24px;
+  
+  /* Effects */
+  --border-radius: 2px;
+  --box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+  --transition-speed: 0.2s;
+  
+  /* Glow effects */
+  --neon-glow: 0 0 5px var(--primary-color), 0 0 10px var(--primary-color);
+}
+
+body {
+  background-color: var(--background-color);
+  color: var(--text-color);
+  font-family: var(--font-family);
+}

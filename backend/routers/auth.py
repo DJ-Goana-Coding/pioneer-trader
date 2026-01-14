@@ -8,11 +8,13 @@ from pydantic import BaseModel
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 # Mock user database for simplicity. In production, use a real DB.
-fake_users_db = {
+fake_# FRANKFURT RESCUE DB
+users_db = {
     "admin": {
         "username": "admin",
-        "hashed_password": get_password_hash("admin123"), # Default password
-        "disabled": False,
+        "full_name": "Commander",
+        "email": "admin@frankfurt.base",
+        "hashed_password": "$pbkdf2-sha256$12000$mZNSai0FQKg1RkgJwXhvLQ$JkfBGq6hdH52YITLS9EB8oxZ5av70kAQ/hrWMnRUWiY"
     }
 }
 

@@ -2,12 +2,12 @@ from datetime import timedelta
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from backend.core.security import Token, authenticate_user, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
+# We only import the tools we KNOW exist in security.py
+from backend.core.security import Token, create_access_token, verify_password, ACCESS_TOKEN_EXPIRE_MINUTES
 
 router = APIRouter()
 
-# --- FRANKFURT RESCUE DATABASE ---
-# This replaces the old fake_users_db variable entirely
+# 1. THE RESCUE DATABASE
 users_db = {
     "admin": {
         "username": "admin",
@@ -17,15 +17,20 @@ users_db = {
     }
 }
 
+# 2. THE LOCAL LOGIC (No external dependencies risk)
+def authenticate_user(users_db, username, password):
+    user = users_db.get(username)
+    if not user:
+        return False
+    # Use the verify_password from security.py which handles PBKDF2
+    if not verify_password(password, user['hashed_password']):
+        return False
+    return user
+
 @router.post("/token", response_model=Token)
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
 ):
-    # Pass the users_db explicitly to authenticate_user if possible, 
-    # or rely on the security module to look it up if it's integrated there.
-    # Since we are fixing auth.py, we handle the lookup here or rely on the standard pattern.
-    
-    # Standard Pattern for this bot:
     user = authenticate_user(users_db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(

@@ -1,16 +1,17 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -e
 
-echo "🚀 Starting Pioneer-Admiral Systems..."
+echo '🚀 STARTING FRANKFURT STACK...'
 
-# 1. Start Backend Brain (Background)
+# 1. Start Backend (Port 8000) in Background
+echo '🧠 Starting Backend on 8000...'
 uvicorn backend.main:app --host 0.0.0.0 --port 8000 &
-echo "✅ Backend started on port 8000"
 
-# 2. Start Streamlit Faceplate (Background)
-# We add --server.baseUrlPath="" to ensure it handles root correctly
-streamlit run streamlit_app/app.py --server.port=7860 --server.address=0.0.0.0 --server.headless=true &
-echo "✅ Streamlit started on port 7860"
+# 2. Start Streamlit (Port 7860) in Background
+echo '📺 Starting Cockpit on 7860...'
+streamlit run streamlit_app/app.py --server.port 7860 --server.address 0.0.0.0 &
 
-# 3. Start Tiny Proxy (Foreground - Keeps Container Alive)
-echo "🛡️ Starting Proxy on port 10000..."
-uvicorn backend.proxy:app --host 0.0.0.0 --port 10000
+# 3. Start Proxy (Port 10000) in FOREGROUND
+# This keeps the container alive and answers Render's health check
+echo 'TGATE Starting Proxy on 10000...'
+python backend/proxy.py

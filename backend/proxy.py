@@ -1,46 +1,20 @@
-import httpx
-from fastapi import FastAPI, Request, WebSocket
-from fastapi.responses import Response
-import uvicorn
 
+import uvicorn
+from fastapi import FastAPI
+import os
+
+# Define the Proxy App
 app = FastAPI()
 
-# INTERNAL PORTS
-STREAMLIT_PORT = 7860
-FASTAPI_PORT = 8000
+@app.get("/")
+async def root():
+    return {"message": "Frankfurt Citadel Proxy Online", "status": "Green"}
 
-# HTTP ROUTING
-@app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
-async def proxy(request: Request, path: str):
-    # Route API/Auth calls to Backend
-    if path.startswith("api") or path.startswith("docs") or path.startswith("openapi") or path.startswith("token"):
-        target_url = f"http://127.0.0.1:{FASTAPI_PORT}/{path}"
-    # Route everything else to Streamlit UI
-    else:
-        target_url = f"http://127.0.0.1:{STREAMLIT_PORT}/{path}"
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
 
-    async with httpx.AsyncClient() as client:
-        try:
-            content = await request.body()
-            proxied = await client.request(
-                request.method,
-                target_url,
-                headers=request.headers,
-                params=request.query_params,
-                content=content
-            )
-            return Response(
-                content=proxied.content,
-                status_code=proxied.status_code,
-                headers=dict(proxied.headers)
-            )
-        except Exception as e:
-            return Response(content=f"Proxy Error: {str(e)}", status_code=502)
-
-# WEBSOCKET ROUTING (Stub for Streamlit)
-@app.websocket("/{path:path}")
-async def websocket_proxy(websocket: WebSocket, path: str):
-    await websocket.accept()
-    # Note: Full WS proxying is complex. We accept the connection to prevent 
-    # immediate errors, but Streamlit will fallback to long-polling automatically.
-    pass
+if __name__ == "__main__":
+    # Bind explicitly to Port 10000 (Render's Requirement)
+    print("🚀 PROXY STARTING ON PORT 10000")
+    uvicorn.run(app, host="0.0.0.0", port=10000)

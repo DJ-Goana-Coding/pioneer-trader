@@ -24,3 +24,10 @@ class StrategyEngine:
                 print(f"⚠️ STRATEGY ERROR: {e}")
             
             await asyncio.sleep(10) # Run every 10 seconds
+
+    async def reload_strategy(self, name: str):
+        print(f"🔄 Reloading {name}...")
+        return True
+
+    async def get_telemetry(self):
+        return {"status": "active", "engine": "Frankfurt"}

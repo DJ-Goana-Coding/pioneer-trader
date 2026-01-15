@@ -1,76 +1,55 @@
-from backend.services.proxy_service import ProxyService
 from fastapi import FastAPI, APIRouter, Request, HTTPException
 from pydantic import BaseModel
-from contextlib import asynccontextmanager
-, APIRouter, Request
-from backend.core.config import settings
-from backend.routers import auth, telemetry, strategy, trade, brain
-from backend.services.exchange import ExchangeService
-from backend.services.oms import OMS
+
 from backend.services.strategy_engine import StrategyEngine
+from backend.services.proxy_service import ProxyService
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup
-    print(f"Starting Pioneer-Admiral V1 in {settings.EXECUTION_MODE} mode...")
-    
-    # Initialize Services
-    exchange_service = ExchangeService()
-    await exchange_service.initialize()
-    
-    strategy_engine = StrategyEngine()
-    oms = OMS(exchange_service)
-    
-    # Dependency Injection
-    app.state.exchange_service = exchange_service
-    app.state.strategy_engine = strategy_engine
-    app.state.oms = oms
-    
-    yield
-    
-    # Shutdown
-    print("Shutting down Pioneer-Admiral V1...")
-    await exchange_service.shutdown()
+app = FastAPI()
 
-app = FastAPI(
-    title=settings.PROJECT_NAME,
-    version=settings.VERSION,
-    lifespan=lifespan
-)
+# --- Services ---
+# Initialize the brain and the gateway
+strategy_engine = StrategyEngine()
+proxy_service = ProxyService()
 
-# Include Routers
-app.include_router(auth.router)
-app.include_router(telemetry.router)
-app.include_router(strategy.router)
-app.include_router(trade.router)
-app.include_router(brain.router)
+# --- Models ---
+class ReloadReq(BaseModel):
+    strategy: str
 
+# --- Core Endpoints ---
 @app.get("/")
 async def root():
-    return {"message": "Pioneer-Admiral V1 Online", "mode": settings.EXECUTION_MODE}
+    return {"status": "ok", "message": "Frankfurt Citadel online"}
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
-
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
 
 @app.get("/healthz")
 async def healthz():
     return {"status": "healthy", "uptime": "ok"}
 
-
-proxy = APIRouter()
-@proxy.api_route("/proxy/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
-async def proxy_stub(path: str, request: Request):
-    return {"status": "proxy_stub"}
-app.include_router(proxy)
-
-class ReloadReq(BaseModel): strategy: str
-@app.post("/strategy/reload")
-async def reload(r: ReloadReq):
-    await strategy_engine.reload_strategy(r.strategy)
-    return {"status": "reloaded"}
-
 @app.get("/telemetry")
 async def telemetry():
     return await strategy_engine.get_telemetry()
+
+@app.post("/strategy/reload")
+async def reload(r: ReloadReq):
+    success = await strategy_engine.reload_strategy(r.strategy)
+    if not success:
+        raise HTTPException(status_code=400, detail="Strategy reload failed")
+    return {"status": "reloaded", "strategy": r.strategy}
+
+# --- Proxy Stub ---
+# This router captures 10000 -> 8000 traffic if needed in future
+proxy = APIRouter()
+
+@proxy.api_route("/proxy/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
+async def proxy_stub(path: str, request: Request):
+    return {
+        "proxy": "active",
+        "path": path,
+        "method": request.method,
+        "note": "Proxy stub active"
+    }
+
+app.include_router(proxy)

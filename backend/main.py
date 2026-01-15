@@ -1,25 +1,36 @@
+
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from contextlib import asynccontextmanager
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from backend.services.brain import brain
+from backend.services.vortex import vortex
+import uvicorn
+import threading
 
-scheduler = AsyncIOScheduler()
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    await brain.vortex.start()
-    scheduler.add_job(brain.vortex.heartbeat, 'interval', seconds=10)
-    scheduler.start()
-    yield
-    await brain.vortex.stop()
+app = FastAPI(title="Frankfurt Citadel API", version="0.9.0")
 
-app = FastAPI(lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
-class ChatReq(BaseModel): message: str
 @app.get("/")
-async def root(): return {"status": "Frankfurt Citadel Online"}
-@app.get("/telemetry")
-async def telemetry(): return await brain.vortex.get_telemetry()
-@app.post("/chat")
-async def chat(r: ChatReq): return await brain.process(r.message)
+def home():
+    return {
+        "system": "Frankfurt Citadel",
+        "status": "ONLINE",
+        "engine_active": vortex.active,
+        "cycles": vortex.cycle_count
+    }
+
+@app.post("/engine/start")
+def start_engine():
+    return {"msg": vortex.ignite()}
+
+@app.post("/engine/stop")
+def stop_engine():
+    return {"msg": vortex.shutdown()}
+
+@app.get("/engine/status")
+def engine_status():
+    return {
+        "active": vortex.active, 
+        "loaded_strategies": list(vortex.strategies.keys()),
+        "cycles_completed": vortex.cycle_count
+    }
+
+# --- THREADED LAUNCHER FOR COLAB ---
+def run_server():
+    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="warning")

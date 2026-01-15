@@ -1,32 +1,26 @@
-import pandas as pd
-import pandas_ta as ta
+
+import asyncio
+from backend.strategies.simple_rsi import RSIStrategy
 
 class StrategyEngine:
     def __init__(self):
-        pass
+        self.rsi = RSIStrategy()
+        self.active = False
 
-    def calculate_indicators(self, df: pd.DataFrame):
-        # Example: RSI and SMA
-        df.ta.rsi(length=14, append=True)
-        df.ta.sma(length=20, append=True)
-        df.ta.sma(length=50, append=True)
-        return df
+    async def start(self):
+        print("🚀 STRATEGY ENGINE: Online")
+        self.active = True
+        asyncio.create_task(self.run_loop())
 
-    def check_signal(self, df: pd.DataFrame):
-        # Simple Crossover Strategy Example
-        # Ensure we have enough data
-        if len(df) < 50:
-            return "NEUTRAL"
+    async def run_loop(self):
+        print("🔄 STRATEGY LOOP: Started")
+        while self.active:
+            try:
+                # Fake data for testing
+                signal = self.rsi.check_signal({"close": 100})
+                if signal == "BUY":
+                    print("✅ STRATEGY SIGNAL: RSI says BUY!")
+            except Exception as e:
+                print(f"⚠️ STRATEGY ERROR: {e}")
             
-        last_row = df.iloc[-1]
-        prev_row = df.iloc[-2]
-        
-        # Golden Cross (SMA 20 crosses above SMA 50)
-        if prev_row['SMA_20'] <= prev_row['SMA_50'] and last_row['SMA_20'] > last_row['SMA_50']:
-            return "BUY"
-            
-        # Death Cross (SMA 20 crosses below SMA 50)
-        if prev_row['SMA_20'] >= prev_row['SMA_50'] and last_row['SMA_20'] < last_row['SMA_50']:
-            return "SELL"
-            
-        return "NEUTRAL"
+            await asyncio.sleep(10) # Run every 10 seconds

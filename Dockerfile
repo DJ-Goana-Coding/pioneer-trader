@@ -1,22 +1,10 @@
-FROM python:3.12-slim
-
-WORKDIR /app
-
-# Install system basics
-RUN apt-get update && apt-get install -y git build-essential curl && rm -rf /var/lib/apt/lists/*
-
-# Install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy the ship
-COPY . .
-
-# Make start script executable
-RUN chmod +x start.sh
-
-# Expose the PROXY port only
-EXPOSE 10000
-
-# Launch
-CMD ["./start.sh"]
+FROM python:3.11-slim
+RUN useradd -m -u 1000 user
+USER user
+ENV HOME=/home/user PATH=/home/user/.local/bin:$PATH
+WORKDIR $HOME/app
+COPY --chown=user requirements.txt .
+RUN pip install --no-cache-dir --upgrade -r requirements.txt
+COPY --chown=user . .
+EXPOSE 7860
+CMD ["/bin/bash", "start.sh"]

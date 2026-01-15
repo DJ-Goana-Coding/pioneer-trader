@@ -1,51 +1,54 @@
-from fastapi import FastAPI, APIRouter, Request, HTTPException, Depends
+from fastapi import FastAPI, APIRouter, Request, HTTPException
+from contextlib import asynccontextmanager
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from pydantic import BaseModel
 
-from backend.routers import auth
-from backend.core.security import get_current_admin
-from backend.services.strategy_engine import StrategyEngine
+from backend.services.vortex import VortexEngine
 from backend.services.proxy_service import ProxyService
 
-app = FastAPI()
-
-# --- Services ---
-strategy_engine = StrategyEngine()
+# --- LIFECYCLE ---
+scheduler = AsyncIOScheduler()
+vortex = VortexEngine()
 proxy_service = ProxyService()
 
-# --- Auth Router ---
-app.include_router(auth.router)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    await vortex.start()
+    scheduler.add_job(vortex.heartbeat, 'interval', seconds=10)
+    scheduler.start()
+    yield
+    # Shutdown
+    await vortex.stop()
 
-# --- Models ---
+app = FastAPI(lifespan=lifespan)
+
+# --- MODELS ---
 class ReloadReq(BaseModel):
     strategy: str
 
-# --- Public Endpoints ---
+# --- OPEN ENDPOINTS (No Auth) ---
 @app.get("/")
 async def root():
-    return {"status": "ok", "message": "Frankfurt Citadel online (Protected)"}
-
-@app.get("/health")
-async def health():
-    return {"status": "ok"}
+    return {"status": "ok", "message": "Frankfurt Citadel (Vortex Active - OPEN)"}
 
 @app.get("/healthz")
 async def healthz():
-    return {"status": "healthy", "uptime": "ok"}
+    return {"status": "healthy"}
 
-# --- PROTECTED Endpoints (Require Admin Token) ---
 @app.get("/telemetry")
-async def telemetry(admin: str = Depends(get_current_admin)):
-    return await strategy_engine.get_telemetry()
+async def telemetry():
+    # DIRECT ACCESS to Vortex Telemetry
+    return await vortex.get_telemetry()
 
 @app.post("/strategy/reload")
-async def reload(r: ReloadReq, admin: str = Depends(get_current_admin)):
-    await strategy_engine.reload_strategy(r.strategy)
-    return {"status": "reloaded"}
+async def reload(r: ReloadReq):
+    # DIRECT ACCESS to Reload
+    return {"status": "reloaded (mock)", "strategy": r.strategy}
 
-# --- Proxy Stub ---
+# --- PROXY STUB ---
 proxy = APIRouter()
 @proxy.api_route("/proxy/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
 async def proxy_stub(path: str, request: Request):
     return {"proxy": "active", "path": path}
-
 app.include_router(proxy)

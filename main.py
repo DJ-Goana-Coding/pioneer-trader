@@ -21,13 +21,25 @@ async def startup_event():
 
 @app.get("/")
 def home():
-    # 🟢 SEND THE BALANCE WITH EVERY POSSIBLE NAME
+    # 🟢 SENDING DATA IN EVERY POSSIBLE FORMAT
+    bal = bot.wallet_balance
     return {
-        "status": "active",
-        "mode": "LIVE",
-        "balance": bot.wallet_balance,        # <--- HUD likely wants this
-        "wallet_balance": bot.wallet_balance, # <--- Backup
-        "usdt": bot.wallet_balance,           # <--- Backup
+        "status": "💰 LIVE",
+        "mode": "ACTIVE",
+        
+        # KEY VARIATIONS
+        "balance": bal,           # Common
+        "wallet_balance": bal,    # Backend name
+        "wallet": bal,            # Short
+        "value": bal,             # Generic
+        "amount": bal,            # Finance
+        "usdt": bal,              # Crypto
+        "total": bal,             # Sum
+        
+        # STRING VERSIONS (In case HUD expects text)
+        "balance_str": f"{bal:.2f}",
+        "display_balance": f"{bal:.2f} USDT",
+        
         "active_slots": bot.slots
     }
 
@@ -35,6 +47,5 @@ def home():
 def get_status():
     return {
         "status": "active",
-        "balance": bot.wallet_balance, 
-        "active_slots": bot.slots
+        "balance": bot.wallet_balance
     }

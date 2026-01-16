@@ -9,19 +9,22 @@ load_dotenv()
 
 class VortexEngine:
     def __init__(self):
+        # --- CONSTANTS ---
         self.starting_capital = 94.50
         self.min_stake = 10.15
         self.fallback_stake = 10.20
-        self.max_allowed_stake = 10.50
         self.initial_slots = 9
         self.max_slots = 35
         
+        # --- VOLATILE STATE (Initialized for HUD Safety) ---
         self.wallet_balance = 0.0
+        self.total_profit = 0.0 
         self.total_equity = 0.0
         self.active_slots = self.initial_slots
         self.held_coins = {}
         self.slot_status = []
         
+        # --- API SETUP ---
         api_key = os.getenv('BINANCE_API_KEY')
         secret_key = os.getenv('BINANCE_SECRET') or os.getenv('BINANCE_SECRET_KEY')
 
@@ -34,6 +37,7 @@ class VortexEngine:
 
     async def fetch_portfolio(self):
         try:
+            # Atomic fetch of balance and equity
             balance = await self.exchange.fetch_balance()
             self.wallet_balance = balance['total'].get('USDT', 0)
             
@@ -49,45 +53,46 @@ class VortexEngine:
                     except: continue
             
             self.total_equity = temp_equity
+            self.total_profit = self.total_equity - self.starting_capital
             self.held_coins = holdings
             
-            # Growth: Every $10.50 in total value unlocks a new slot
+            # Growth Engine: Every $10.50 totals 1 Slot
             earned_slots = int(self.total_equity / 10.50)
             self.active_slots = max(self.initial_slots, min(earned_slots, self.max_slots))
-            
-        except Exception as e:
-            print(f"Sync Error: {e}")
+        except: pass
 
     async def execute_trade(self, pair, strategy, rsi):
-        await self.fetch_portfolio()
-        if self.wallet_balance < self.min_stake:
+        # ATOMIC BALANCE SYNC: Final check before firing the bullet
+        balance = await self.exchange.fetch_balance()
+        current_usdt = balance['total'].get('USDT', 0)
+        
+        if current_usdt < self.min_stake:
+            print(f"🛡️ ATOMIC BLOCK: {pair} aborted. USDT ${current_usdt:.2f} is under ${self.min_stake}.")
             return
 
-        # STAGE 1: Attempt $10.15
+        # Attempt 1: $10.15 Strike
         print(f"⚡ {strategy} ATTEMPT 1: {pair} | RSI: {rsi:.2f} | STAKE: ${self.min_stake}")
         try:
              await self.exchange.create_order(
                  symbol=pair, type='market', side='buy', amount=None,
                  params={'quoteOrderQty': self.min_stake}
              )
-             print(f"✅ SUCCESS: {pair} BOUGHT AT ${self.min_stake}")
+             print(f"✅ SUCCESS: {pair} BOUGHT ($10.15)")
              return
         except Exception as e:
-             print(f"⚠️ ATTEMPT 1 KNOCKED BACK: {e}")
-
-        # STAGE 2: Fallback to $10.20
-        print(f"⚡ {strategy} ATTEMPT 2: {pair} | STAKE: ${self.fallback_stake}")
-        try:
-             await self.exchange.create_order(
-                 symbol=pair, type='market', side='buy', amount=None,
-                 params={'quoteOrderQty': self.fallback_stake}
-             )
-             print(f"✅ SUCCESS: {pair} BOUGHT AT ${self.fallback_stake}")
-        except Exception as e:
-             print(f"❌ ATTEMPT 2 FAILED: {e}")
+             # Attempt 2: $10.20 Fallback
+             print(f"⚠️ ATTEMPT 1 KNOCKED BACK. ESCALATING...")
+             try:
+                 await self.exchange.create_order(
+                     symbol=pair, type='market', side='buy', amount=None,
+                     params={'quoteOrderQty': self.fallback_stake}
+                 )
+                 print(f"✅ SUCCESS: {pair} BOUGHT ($10.20)")
+             except Exception as e2:
+                 print(f"❌ TRADE FAILED: {e2}")
 
     async def start_loop(self):
-        print("🔥 VORTEX v4.2.4: TACTICAL ESCALATION LIVE")
+        print("🔥 VORTEX v4.2.6: SINGLE BULLET PROTOCOL LIVE")
         while True:
             try:
                 await self.fetch_portfolio()
@@ -104,12 +109,14 @@ class VortexEngine:
                         
                         triggered = rsi < 55
                         status_msg = "🔴 BUY" if triggered else "HUNTING"
-                        
                         print(f"Slot {i:02d} | {pair:<10} | RSI: {rsi:.2f} {status_msg}")
+                        
                         current_scan_data.append({"slot": i, "pair": pair, "strategy": "HARVESTER", "rsi": f"{rsi:.2f}", "status": status_msg})
 
                         if triggered:
                             await self.execute_trade(pair, "HARVESTER", rsi)
+                            # WAIT for exchange to sync balance after a buy
+                            await asyncio.sleep(2.0) 
                         
                         await asyncio.sleep(0.5)
                     except: continue

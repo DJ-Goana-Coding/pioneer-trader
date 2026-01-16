@@ -1,11 +1,11 @@
 import os
+import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.services.vortex import VortexEngine
 
 app = FastAPI()
 
-# FORCE OPEN ALL DOORS FOR THE HUD
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -18,9 +18,10 @@ bot = VortexEngine()
 
 @app.on_event("startup")
 async def startup_event():
-    import asyncio
     asyncio.create_task(bot.start_loop())
 
+# FIX: Allow HEAD requests so Render health checks stay green
+@app.head("/")
 @app.get("/")
 async def home():
     try:

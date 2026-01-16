@@ -1,61 +1,37 @@
-
-import time
-import logging
-from datetime import datetime
-from apscheduler.schedulers.background import BackgroundScheduler
-from backend.engine.binder import RuntimeBinder
-
-# Setup Logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("VORTEX")
+import os
+import asyncio
+import ccxt
+import pandas_ta as ta
 
 class VortexEngine:
-    def __init__(self):
-        self.scheduler = BackgroundScheduler()
-        self.binder = RuntimeBinder()
-        self.strategies = {}
-        self.active = False
-        self.cycle_count = 0
-        self.wallet = 1000.00  # Paper Money
+    def __init__(self, active_slots=2):
+        self.stake = 10.50
+        self.slots = active_slots
+        # Initialize Binance with Environment Variables
+        self.exchange = ccxt.binance({
+            'apiKey': os.environ.get('BINANCE_API_KEY'),
+            'secret': os.environ.get('BINANCE_SECRET_KEY'),
+            'enableRateLimit': True,
+        })
 
-    def ignite(self):
-        """Starts the Engine Loop."""
-        if self.active:
-            return "⚠️ Vortex is already spinning."
-        
-        logger.info("🔥 IGNITING VORTEX ENGINE...")
-        self.strategies = self.binder.bind_and_load()
-        
-        # Add the 'Heartbeat' Job (The 60s Tick)
-        self.scheduler.add_job(self.tick, 'interval', seconds=5, id='heartbeat')
-        self.scheduler.start()
-        self.active = True
-        return "✅ Vortex Ignition Successful. Systems Green."
+    async def get_balance(self):
+        try:
+            balance = self.exchange.fetch_balance()
+            return balance['total'].get('USDT', 0)
+        except Exception as e:
+            print(f"❌ WALLET ERROR: {e}")
+            return 0
 
-    def shutdown(self):
-        """Kills the Loop."""
-        if not self.active:
-            return "⚠️ Vortex is already cold."
-        
-        self.scheduler.shutdown(wait=False)
-        self.active = False
-        return "🛑 Vortex Shutdown Complete."
-
-    def tick(self):
-        """The Main Loop: Runs every 5 seconds (fast for testing)."""
-        self.cycle_count += 1
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        
-        # 1. Fetch Data (Mock)
-        market_data = {"price": 65000 + (self.cycle_count * 10), "time": timestamp}
-        
-        # 2. Feed Strategies
-        logger.info(f"⏳ CYCLE {self.cycle_count} | Market: {market_data}")
-        for s_id, strat in self.strategies.items():
-            try:
-                strat.run(market_data)
-            except Exception as e:
-                logger.error(f"❌ Strategy {s_id} Failed: {e}")
-
-# Singleton Instance
-vortex = VortexEngine()
+    async def start_loop(self):
+        print(f"🛰️ VORTEX ARMED: 2 Slots | Strategy: VOLATILE SNIPER")
+        while True:
+            usdt_balance = await self.get_balance()
+            print(f"💰 WALLET STATUS: {usdt_balance} USDT")
+            
+            if usdt_balance < (self.stake * self.slots):
+                print("⚠️ LOW FUEL: Waiting for USDT...")
+            else:
+                print(f"🌀 SCANNING: Hunting Volatile Entries for {self.slots} Slots...")
+                # P25 Volatile Strategy will be executed here
+            
+            await asyncio.sleep(60)

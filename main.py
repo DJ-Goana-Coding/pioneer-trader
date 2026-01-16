@@ -5,10 +5,10 @@ from backend.services.vortex import VortexEngine
 
 app = FastAPI()
 
-# ALLOW VERCEL TO TALK TO RENDER
+# ENABLE VERCEL ACCESS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Allows all connections (Simplest for now)
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -21,15 +21,20 @@ bot = VortexEngine()
 async def startup_event():
     asyncio.create_task(bot.start_loop())
 
+# 🟢 THE FIX: SEND EVERYTHING ON THE HOME PAGE
 @app.get("/")
 def home():
-    return {"status": "Vortex Engine Active", "mode": "LIVE"}
+    return {
+        "status": "active", 
+        "mode": "LIVE",
+        "wallet_balance": bot.wallet_balance,  # <--- HERE IT IS
+        "active_slots": bot.slots
+    }
 
 @app.get("/status")
 def get_status():
-    # RETURN THE SAVED BALANCE TO VERCEL
     return {
         "status": "active",
-        "wallet_balance": bot.wallet_balance, 
+        "wallet_balance": bot.wallet_balance,
         "active_slots": bot.slots
     }

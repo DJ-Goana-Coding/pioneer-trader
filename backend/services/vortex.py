@@ -9,17 +9,21 @@ load_dotenv()
 
 class VortexEngine:
     def __init__(self):
-        # --- FIXED CONSTANTS ---
+        # --- NEW CONSTANTS ---
         self.starting_capital = 94.50
         self.min_stake = 10.15
         self.fallback_stake = 10.20
         self.trail_drop = 0.005 
         
-        # --- ALL HUD VARIABLES (FORCE INITIALIZED) ---
+        # --- EXPANDED SLOT FORMATION ---
+        self.initial_slots = 15  # Upgraded from 9
+        self.max_total_slots = 45 # Upgraded from 35
+        
+        # --- STATE ---
         self.wallet_balance = 0.0
         self.total_equity = 0.0
         self.total_profit = 0.0
-        self.active_slots = 9
+        self.active_slots = self.initial_slots
         self.next_slot_price = 10.50
         self.held_coins = {}
         self.peak_prices = {}
@@ -54,17 +58,17 @@ class VortexEngine:
             self.total_profit = self.total_equity - self.starting_capital
             self.held_coins = holdings
             
-            # HUD Logic: 
+            # Dynamic Slot Calculation (Sanity Checked for 15-45)
             raw_slots = int(self.total_equity / 10.50)
-            self.active_slots = max(9, min(raw_slots, 35)) 
+            self.active_slots = max(self.initial_slots, min(raw_slots, self.max_total_slots)) 
             self.next_slot_price = (self.active_slots + 1) * 10.50
-        except Exception as e:
-            print(f"Sync Error: {e}")
+        except: pass
 
     async def execute_trade(self, pair, side, price=0):
         if side == 'buy' and self.wallet_balance >= self.min_stake:
             try:
                 await self.exchange.create_order(symbol=pair, type='market', side='buy', params={'quoteOrderQty': self.min_stake})
+                print(f"🚀 REINFORCEMENT FIRE: {pair}")
             except: pass
         elif side == 'sell':
             coin = pair.split('/')[0]
@@ -73,19 +77,25 @@ class VortexEngine:
                 try:
                     await self.exchange.create_market_sell_order(pair, amount)
                     if coin in self.peak_prices: del self.peak_prices[coin]
+                    print(f"💰 HARVEST COMPLETE: {pair}")
                 except: pass
 
     async def start_loop(self):
-        print("🔥 VORTEX v4.3.5: OMNI-STABLE HUD-FIX LIVE")
+        print(f"🔥 VORTEX v4.4.0: 15-SLOT FORMATION ACTIVE")
         while True:
             try:
                 await self.fetch_portfolio()
+                # INTEL POOL: Gainers, Losers, and Volume
                 tickers = await self.exchange.fetch_tickers()
                 usdt_markets = [t for t in tickers.values() if t['symbol'].endswith('/USDT') and t['quoteVolume'] > 5000000]
                 gainers = sorted(usdt_markets, key=lambda x: x['percentage'], reverse=True)[:10]
-                intel_pool = list(set([f"{c}/USDT" for c in self.held_coins.keys()] + [t['symbol'] for t in gainers]))
+                losers = sorted(usdt_markets, key=lambda x: x['percentage'])[:10]
+                
+                intel_pool = list(set([f"{c}/USDT" for c in self.held_coins.keys()] + [t['symbol'] for t in (gainers + losers)]))
 
                 current_scan_data = []
+                filled_slots = len(self.held_coins)
+                
                 for i, pair in enumerate(intel_pool):
                     if i >= self.active_slots: break
                     try:
@@ -109,10 +119,10 @@ class VortexEngine:
                                 await self.execute_trade(pair, 'sell', price=cur_price)
                             else:
                                 status = f"HOLD (+{((cur_price/peak)-1)*100:.2f}%)"
-                        elif rsi < 55:
-                            status = "🔴 OMNI FIRE"
+                        elif rsi < 55 and filled_slots < self.active_slots:
+                            status = "🔴 SKIRMISH BUY"
                             await self.execute_trade(pair, 'buy')
-                            await asyncio.sleep(2)
+                            filled_slots += 1
 
                         current_scan_data.append({"slot": i+1, "pair": pair, "rsi": f"{rsi:.2f}", "status": status})
                         await asyncio.sleep(0.5)
@@ -120,5 +130,4 @@ class VortexEngine:
 
                 self.slot_status = current_scan_data
                 await asyncio.sleep(10)
-            except:
-                await asyncio.sleep(10)
+            except: await asyncio.sleep(10)

@@ -10,15 +10,25 @@ class VortexEngine:
         self.stake = 10.50
         self.slots = active_slots
         self.pairs = ['SOL/USDT', 'XRP/USDT', 'PEPE/USDT', 'DOGE/USDT']
+        
+        # 🔍 DEBUG PRINT: Let's see if the keys are actually being read
+        api_key = os.environ.get('BINANCE_API_KEY')
+        secret_key = os.environ.get('BINANCE_SECRET_KEY')
+        
+        if not api_key or not secret_key:
+            print("⚠️ CRITICAL: API Keys missing from Environment Variables!")
+        else:
+            print("🔑 KEYS FOUND: Loading into CCXT Engine...")
+
         self.exchange = ccxt.binance({
-            'apiKey': os.environ.get('BINANCE_API_KEY'),
-            'secret': os.environ.get('BINANCE_SECRET_KEY'),
+            'apiKey': api_key,
+            'secret': secret_key,  # EXPLICITLY USING BINANCE_SECRET_KEY
             'enableRateLimit': True,
         })
 
     async def start_loop(self):
-        # Wait 10-20 seconds on boot to avoid "Teapot" bans
-        await asyncio.sleep(random.randint(10, 20))
+        # Stealth Jitter on Boot
+        await asyncio.sleep(random.randint(5, 15))
         print("🌀 VORTEX HEARTBEAT: Stealth mode active.")
         
         while True:
@@ -33,10 +43,11 @@ class VortexEngine:
                     df['rsi'] = ta.rsi(df['c'], length=14)
                     rsi = df['rsi'].iloc[-1]
                     print(f"🔍 {pair} | RSI: {rsi:.2f}")
-                    await asyncio.sleep(3) # Space out requests
+                    await asyncio.sleep(2)
 
-                # 2-minute gap + random jitter
-                await asyncio.sleep(120 + random.randint(1, 15))
+                await asyncio.sleep(120 + random.randint(1, 10))
+                
             except Exception as e:
+                # If signature fails, we print the exact error to diagnose
                 print(f"⚠️ HEARTBEAT PAUSED: {e}")
-                await asyncio.sleep(300) # 5 min cool-down on error
+                await asyncio.sleep(60)

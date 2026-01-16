@@ -15,17 +15,19 @@ class VortexEngine:
         self.fallback_stake = 10.20
         self.trail_drop = 0.005 # 0.5%
         
-        # --- DYNAMIC STATE ---
+        # --- HUD SAFETY VARIABLES (MUST EXIST ON STARTUP) ---
         self.wallet_balance = 0.0
         self.total_equity = 0.0
         self.total_profit = 0.0
         self.active_slots = 9
-        self.next_slot_price = 10.50  # FIXED: Missing attribute for HUD
+        self.next_slot_price = 10.50  # THE FIX: Prevents AttributeError
+        
+        # --- STATE ---
         self.held_coins = {}
         self.peak_prices = {}
         self.slot_status = []
         
-        # --- API SETUP ---
+        # --- API ---
         api_key = os.getenv('BINANCE_API_KEY')
         secret_key = os.getenv('BINANCE_SECRET') or os.getenv('BINANCE_SECRET_KEY')
 
@@ -37,19 +39,17 @@ class VortexEngine:
 
     async def fetch_market_intelligence(self):
         try:
-            balance = await self.exchange.fetch_balance()
+            # Batch call for Gainers, Losers, and Volume
             tickers = await self.exchange.fetch_tickers()
-            
-            # Watch coins we hold
-            intelligence_list = [f"{c}/USDT" for c, a in balance['total'].items() if a > 0 and c != 'USDT' and c != 'BNB']
-            
-            # Add Top Movers
             usdt_markets = [t for t in tickers.values() if t['symbol'].endswith('/USDT') and t['quoteVolume'] > 5000000]
+            
             gainers = sorted(usdt_markets, key=lambda x: x['percentage'], reverse=True)[:10]
             losers = sorted(usdt_markets, key=lambda x: x['percentage'])[:10]
             hot = sorted(usdt_markets, key=lambda x: x['quoteVolume'], reverse=True)[:10]
             
-            combined = list(set(intelligence_list + [t['symbol'] for t in (gainers + losers + hot)]))
+            # Combine with currently held coins
+            held_list = [f"{c}/USDT" for c in self.held_coins.keys()]
+            combined = list(set(held_list + [t['symbol'] for t in (gainers + losers + hot)]))
             return combined
         except: return ['BTC/USDT', 'SOL/USDT', 'ETH/USDT']
 
@@ -59,6 +59,7 @@ class VortexEngine:
             self.wallet_balance = balance['total'].get('USDT', 0)
             holdings = {}
             temp_equity = self.wallet_balance
+            
             for coin, amount in balance['total'].items():
                 if amount > 0 and coin not in ['USDT', 'BNB']:
                     try:
@@ -72,12 +73,11 @@ class VortexEngine:
             self.total_profit = self.total_equity - self.starting_capital
             self.held_coins = holdings
             
-            # Dynamic Slot Growth
+            # Update Dynamic Slots
             self.active_slots = max(9, int(self.total_equity / 10.50))
-            # Calculate cost for the NEXT slot upgrade
             self.next_slot_price = (self.active_slots + 1) * 10.50
-            
-        except: pass
+        except Exception as e:
+            print(f"Portfolio Error: {e}")
 
     async def execute_trade(self, pair, side, price=0):
         if side == 'buy':
@@ -96,11 +96,12 @@ class VortexEngine:
             try:
                 await self.exchange.create_market_sell_order(pair, amount)
                 if coin in self.peak_prices: del self.peak_prices[coin]
-                print(f"💰 TRAIL HARVEST: {pair} AT ${price}")
-            except: pass
+                print(f"💰 TRAIL HARVEST: {pair} SOLD AT ${price}")
+            except Exception as e:
+                print(f"Sell Error: {e}")
 
     async def start_loop(self):
-        print("🔥 VORTEX v4.3.2: HUD REPAIR LIVE")
+        print("🔥 VORTEX v4.3.3: OMNI-STABLE LIVE")
         while True:
             try:
                 await self.fetch_portfolio()
@@ -125,13 +126,16 @@ class VortexEngine:
                         if is_holding:
                             if coin not in self.peak_prices or cur_price > self.peak_prices[coin]:
                                 self.peak_prices[coin] = cur_price
+                            
                             peak = self.peak_prices[coin]
                             drop_pct = (peak - cur_price) / peak
+                            
                             if rsi > 70 and drop_pct >= self.trail_drop:
                                 status = "🟢 TRAIL EXIT"
                                 await self.execute_trade(pair, 'sell', price=cur_price)
                             else:
-                                status = f"HOLD (+{((cur_price/peak)-1)*100:.2f}% off peak)"
+                                status = f"HOLDING (+{((cur_price/peak)-1)*100:.2f}% off peak)"
+                        
                         elif rsi < 55:
                             status = "🔴 OMNI FIRE"
                             await self.execute_trade(pair, 'buy')
@@ -144,4 +148,6 @@ class VortexEngine:
 
                 self.slot_status = current_scan_data
                 await asyncio.sleep(10)
-            except: await asyncio.sleep(10)
+            except Exception as e:
+                print(f"Main Loop Error: {e}")
+                await asyncio.sleep(10)

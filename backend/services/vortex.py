@@ -18,10 +18,12 @@ class VortexEngine:
     async def start_loop(self):
         while True:
             try:
+                # 1. Wallet Check
                 balance = await self.exchange.fetch_balance()
                 usdt = balance['total'].get('USDT', 0)
                 print(f"💰 WALLET: {usdt:.2f} USDT")
 
+                # 2. Volatile Scan (2 Slots)
                 for pair in self.pairs[:self.slots]:
                     ohlcv = await self.exchange.fetch_ohlcv(pair, timeframe='1m', limit=50)
                     df = pd.DataFrame(ohlcv, columns=['ts', 'o', 'h', 'l', 'c', 'v'])
@@ -29,7 +31,7 @@ class VortexEngine:
                     rsi = df['rsi'].iloc[-1]
                     print(f"🔍 {pair} | RSI: {rsi:.2f}")
 
-                await asyncio.sleep(60)
+                await asyncio.sleep(60) # Scan every minute
             except Exception as e:
                 print(f"⚠️ HEARTBEAT SKIPPED: {e}")
                 await asyncio.sleep(10)

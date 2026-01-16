@@ -13,36 +13,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 🟢 FIX: INITIALIZE WITHOUT ARGUMENTS (V3.0 handles slots internally)
-bot = VortexEngine() 
+# 🟢 FIX: NO ARGUMENTS (Prevents Crash)
+bot = VortexEngine()
 
 @app.on_event("startup")
 async def startup_event():
     asyncio.create_task(bot.start_loop())
 
-# HEALTH CHECK (CRITICAL FOR RENDER)
+# 🟢 HEALTH CHECK (Prevents Render 405 Error)
 @app.head("/")
 def health_check():
     return Response(status_code=200)
 
 @app.get("/")
 def home():
-    # SEND ALL DATA FOR HUD
+    # 🟢 FULL DATA STREAM FOR VERCEL
     bal = bot.wallet_balance
     return {
         "status": "💰 LIVE",
-        "mode": "ACTIVE",
-        "balance": bal,           
-        "wallet_balance": bal,    
-        "usdt": bal,              
-        "active_slots": bot.active_slots, # Updated to read dynamic slots
-        "stake": bot.current_stake
+        "balance": bal,
+        "wallet_balance": bal, # Backup key
+        
+        # RICH DATA
+        "profit_total": f"{bot.total_profit:.2f}",
+        "next_slot_cost": f"{bot.next_slot_price:.2f}",
+        "active_slots": bot.active_slots,
+        "portfolio": bot.held_coins,  # {"PEPE": "4000", "SOL": "0.5"}
+        "strategies": bot.slot_status # [{"slot": 1, "pair": "SOL", "rsi": 30}]
     }
 
 @app.get("/status")
 def get_status():
     return {
         "status": "active",
-        "balance": bot.wallet_balance,
-        "slots": bot.active_slots
+        "balance": bot.wallet_balance
     }

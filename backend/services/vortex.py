@@ -11,18 +11,15 @@ class VortexEngine:
     def __init__(self):
         self.starting_capital = 94.50
         self.min_stake = 10.15
-        self.fallback_stake = 10.20
-        self.initial_slots = 9
+        self.trail_drop = 0.005 # 0.5%
         
-        # Trailing Config
-        self.trail_drop = 0.005 # 0.5% drop from peak
-        self.peak_prices = {} # Track highest price since buy
-        
+        # State Management
         self.wallet_balance = 0.0
-        self.total_profit = 0.0 
         self.total_equity = 0.0
-        self.active_slots = self.initial_slots
+        self.total_profit = 0.0
+        self.active_slots = 9
         self.held_coins = {}
+        self.peak_prices = {}
         self.slot_status = []
         
         api_key = os.getenv('BINANCE_API_KEY')
@@ -31,8 +28,22 @@ class VortexEngine:
         self.exchange = ccxt.binance({
             'apiKey': api_key, 'secret': secret_key,
             'enableRateLimit': True,
-            'options': {'defaultType': 'spot', 'adjustForTimeDifference': True}
+            'options': {'defaultType': 'spot'}
         })
+
+    async def fetch_market_intelligence(self):
+        try:
+            # BATCH CALL: Fetch all tickers in one go
+            tickers = await self.exchange.fetch_tickers()
+            usdt_markets = [t for t in tickers.values() if t['symbol'].endswith('/USDT') and t['quoteVolume'] > 5000000]
+            
+            # Categories
+            gainers = sorted(usdt_markets, key=lambda x: x['percentage'], reverse=True)[:10]
+            losers = sorted(usdt_markets, key=lambda x: x['percentage'])[:10]
+            hot = sorted(usdt_markets, key=lambda x: x['quoteVolume'], reverse=True)[:10]
+            
+            return list(set([t['symbol'] for t in (gainers + losers + hot)]))
+        except: return ['BTC/USDT', 'SOL/USDT', 'ETH/USDT']
 
     async def fetch_portfolio(self):
         try:
@@ -51,77 +62,80 @@ class VortexEngine:
             self.total_equity = temp_equity
             self.total_profit = self.total_equity - self.starting_capital
             self.held_coins = holdings
-            self.active_slots = max(self.initial_slots, int(self.total_equity / 10.50))
+            self.active_slots = max(9, int(self.total_equity / 10.50))
         except: pass
 
-    async def execute_trade(self, pair, side, rsi, price=0):
+    async def execute_trade(self, pair, side, price=0):
         if side == 'buy':
-            balance = await self.exchange.fetch_balance()
-            if balance['total'].get('USDT', 0) < self.min_stake: return
+            if self.wallet_balance < self.min_stake: return
             try:
-                await self.exchange.create_order(symbol=pair, type='market', side='buy', amount=None, params={'quoteOrderQty': self.min_stake})
-                print(f"✅ BOUGHT {pair}")
-            except:
-                try:
-                    await self.exchange.create_order(symbol=pair, type='market', side='buy', amount=None, params={'quoteOrderQty': self.fallback_stake})
-                    print(f"✅ BOUGHT {pair} (Fallback)")
-                except: pass
-        
+                await self.exchange.create_order(symbol=pair, type='market', side='buy', params={'quoteOrderQty': self.min_stake})
+                print(f"🚀 OMNI-FIRE BUY: {pair}")
+            except: pass
         elif side == 'sell':
             coin = pair.split('/')[0]
             amount = self.held_coins.get(coin)
             if not amount: return
             try:
                 await self.exchange.create_market_sell_order(pair, amount)
-                if coin in self.peak_prices: del self.peak_prices[coin] # Reset peak
-                print(f"💰 TRAIL HARVESTED: {pair} SOLD AT ${price}")
-            except Exception as e: print(f"❌ SELL FAILED: {e}")
+                if coin in self.peak_prices: del self.peak_prices[coin]
+                print(f"💰 HARVESTED {pair} at ${price}")
+            except: pass
 
     async def start_loop(self):
-        print("🔥 VORTEX v4.2.8: TRAILING PROFIT LIVE")
+        print("🔥 VORTEX v4.3.0: OMNI-STRAT ENGINE LIVE")
         while True:
             try:
                 await self.fetch_portfolio()
-                market_pairs = ['SOL/USDT', 'XRP/USDT', 'PEPE/USDT', 'DOGE/USDT', 'BTC/USDT', 'ETH/USDT', 'ADA/USDT', 'BNB/USDT', 'TRX/USDT', 'SUI/USDT']
+                intelligence_pool = await self.fetch_market_intelligence()
+                
+                # Filter for coins we hold + potential targets
+                watch_list = list(set(list(self.held_coins.keys()) + intelligence_pool))
                 
                 current_scan_data = []
-                for i in range(1, self.active_slots + 1):
-                    pair = market_pairs[(i - 1) % len(market_pairs)]
-                    coin = pair.split('/')[0]
+                filled_slots = 0
+                
+                for pair in watch_list:
+                    if filled_slots >= self.active_slots: break
+                    if not pair.endswith('/USDT'): pair = f"{pair}/USDT"
+                    
                     try:
                         ticker = await self.exchange.fetch_ticker(pair)
                         cur_price = ticker['last']
+                        coin = pair.split('/')[0]
+                        
+                        is_holding = coin in self.held_coins
+                        
+                        # STRATEGY 1: Harvester (RSI)
                         ohlcv = await self.exchange.fetch_ohlcv(pair, timeframe='1m', limit=50)
                         df = pd.DataFrame(ohlcv, columns=['ts', 'o', 'h', 'l', 'c', 'v'])
                         rsi = ta.rsi(df['c'], length=14).iloc[-1]
                         
-                        is_holding = coin in self.held_coins
                         status = "HUNTING"
-
+                        
                         if is_holding:
-                            # Update Peak Price
+                            # Update Peak for Trailing
                             if coin not in self.peak_prices or cur_price > self.peak_prices[coin]:
                                 self.peak_prices[coin] = cur_price
                             
-                            # Check Trailing Exit (If RSI high AND price dropped 0.5% from peak)
                             peak = self.peak_prices[coin]
                             drop_pct = (peak - cur_price) / peak
                             
                             if rsi > 70 and drop_pct >= self.trail_drop:
-                                status = "🟢 TRAIL EXIT"
-                                await self.execute_trade(pair, 'sell', rsi, cur_price)
+                                status = "🟢 TRAIL SELL"
+                                await self.execute_trade(pair, 'sell', price=cur_price)
                             else:
-                                status = f"HOLDING (+{( (cur_price/peak)-1)*100:.2f}% vs Peak)"
+                                status = f"HOLDING (+{((cur_price/peak)-1)*100:.2f}% vs Peak)"
                         
-                        elif not is_holding and rsi < 55:
-                            status = "🔴 BUY"
-                            await self.execute_trade(pair, 'buy', rsi)
-                        
-                        current_scan_data.append({"slot": i, "pair": pair, "rsi": f"{rsi:.2f}", "status": status})
-                        await asyncio.sleep(1)
+                        elif rsi < 55: # Shared RSI Trigger
+                            status = "🔴 OMNI BUY"
+                            await self.execute_trade(pair, 'buy')
+                            filled_slots += 1
+
+                        current_scan_data.append({"slot": len(current_scan_data)+1, "pair": pair, "rsi": f"{rsi:.2f}", "status": status})
+                        await asyncio.sleep(0.5)
                     except: continue
 
                 self.slot_status = current_scan_data
                 await asyncio.sleep(10)
-            except Exception as e:
-                await asyncio.sleep(10)
+            except: await asyncio.sleep(10)

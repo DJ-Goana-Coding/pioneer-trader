@@ -1,11 +1,11 @@
 import os
 import asyncio
-import ccxt
+import ccxt.async_support as ccxt  # <--- FIX: USING ASYNC LIBRARY
 import pandas as pd
 import pandas_ta as ta
-from dotenv import load_dotenv # <--- NEW: LOADS THE FILE
+from dotenv import load_dotenv
 
-# Load the secrets file immediately
+# Load the keys from the .env file
 load_dotenv()
 
 class VortexEngine:
@@ -14,16 +14,16 @@ class VortexEngine:
         self.slots = active_slots
         self.pairs = ['SOL/USDT', 'XRP/USDT', 'PEPE/USDT', 'DOGE/USDT']
         
-        # 1. GET KEYS FROM THE FILE
+        # 1. GET KEYS (FROM .ENV FILE)
         api_key = os.getenv('BINANCE_API_KEY')
-        secret_key = os.getenv('BINANCE_SECRET')
-        
-        # Fallback for naming confusion
+        secret_key = os.getenv('BINANCE_SECRET') 
+
+        # Fallback
         if not secret_key:
             secret_key = os.getenv('BINANCE_SECRET_KEY')
 
         if not api_key:
-            print("❌ CRITICAL: NO API KEY FOUND IN .ENV FILE")
+            print("⚠️ CRITICAL: API KEY NOT FOUND IN .ENV")
 
         # 2. CONNECT
         self.exchange = ccxt.binance({
@@ -38,19 +38,30 @@ class VortexEngine:
         self.exchange.set_sandbox_mode(False)
 
     async def start_loop(self):
-        print("🔥 VORTEX ENGINE: LIVE (LOADING KEYS FROM .ENV FILE)")
+        print("🔥 VORTEX ENGINE: LIVE (ASYNC REPAIRED)")
         
-        while True:
-            try:
-                balance = await self.exchange.fetch_balance()
-                usdt = balance['total'].get('USDT', 0)
-                print(f"💰 WALLET: {usdt:.2f} USDT")
+        # We must handle closing the connection cleanly
+        try:
+            while True:
+                try:
+                    # 3. THIS NOW WORKS BECAUSE WE USED ASYNC_SUPPORT
+                    balance = await self.exchange.fetch_balance()
+                    usdt = balance['total'].get('USDT', 0)
+                    print(f"💰 WALLET: {usdt:.2f} USDT")
 
-                for pair in self.pairs[:self.slots]:
-                    print(f"🔍 SCANNING {pair}...")
-                    await asyncio.sleep(1)
+                    # Scan Logic
+                    for pair in self.pairs[:self.slots]:
+                        ohlcv = await self.exchange.fetch_ohlcv(pair, timeframe='1m', limit=50)
+                        df = pd.DataFrame(ohlcv, columns=['ts', 'o', 'h', 'l', 'c', 'v'])
+                        df['rsi'] = ta.rsi(df['c'], length=14)
+                        rsi = df['rsi'].iloc[-1]
+                        print(f"🔍 {pair} | RSI: {rsi:.2f}")
+                        await asyncio.sleep(2)
 
-                await asyncio.sleep(60)
-            except Exception as e:
-                print(f"⚠️ ERROR: {e}")
-                await asyncio.sleep(60)
+                    await asyncio.sleep(60)
+                    
+                except Exception as e:
+                    print(f"⚠️ ERROR: {e}")
+                    await asyncio.sleep(60)
+        finally:
+            await self.exchange.close()

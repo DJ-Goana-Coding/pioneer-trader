@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 from backend.services.vortex import VortexEngine
@@ -19,27 +19,21 @@ bot = VortexEngine()
 async def startup_event():
     asyncio.create_task(bot.start_loop())
 
+# 🟢 THE KEY TO UNLOCKING RENDER (Passes the Health Check)
+@app.head("/")
+def health_check():
+    return Response(status_code=200)
+
 @app.get("/")
 def home():
-    # 🟢 SENDING DATA IN EVERY POSSIBLE FORMAT
+    # 🟢 SEND THE BALANCE (The "Shotgun" approach included)
     bal = bot.wallet_balance
     return {
         "status": "💰 LIVE",
         "mode": "ACTIVE",
-        
-        # KEY VARIATIONS
-        "balance": bal,           # Common
-        "wallet_balance": bal,    # Backend name
-        "wallet": bal,            # Short
-        "value": bal,             # Generic
-        "amount": bal,            # Finance
-        "usdt": bal,              # Crypto
-        "total": bal,             # Sum
-        
-        # STRING VERSIONS (In case HUD expects text)
-        "balance_str": f"{bal:.2f}",
-        "display_balance": f"{bal:.2f} USDT",
-        
+        "balance": bal,           
+        "wallet_balance": bal,    
+        "usdt": bal,              
         "active_slots": bot.slots
     }
 

@@ -13,20 +13,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-bot = VortexEngine()
+# 🟢 FIX: INITIALIZE WITHOUT ARGUMENTS (V3.0 handles slots internally)
+bot = VortexEngine() 
 
 @app.on_event("startup")
 async def startup_event():
     asyncio.create_task(bot.start_loop())
 
-# 🟢 THE KEY TO UNLOCKING RENDER (Passes the Health Check)
+# HEALTH CHECK (CRITICAL FOR RENDER)
 @app.head("/")
 def health_check():
     return Response(status_code=200)
 
 @app.get("/")
 def home():
-    # 🟢 SEND THE BALANCE (The "Shotgun" approach included)
+    # SEND ALL DATA FOR HUD
     bal = bot.wallet_balance
     return {
         "status": "💰 LIVE",
@@ -34,12 +35,14 @@ def home():
         "balance": bal,           
         "wallet_balance": bal,    
         "usdt": bal,              
-        "active_slots": bot.slots
+        "active_slots": bot.active_slots, # Updated to read dynamic slots
+        "stake": bot.current_stake
     }
 
 @app.get("/status")
 def get_status():
     return {
         "status": "active",
-        "balance": bot.wallet_balance
+        "balance": bot.wallet_balance,
+        "slots": bot.active_slots
     }

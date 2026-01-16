@@ -3,6 +3,5 @@ uvicorn
 pandas-ta
 ccxt
 python-dotenv
-streamlit
 pandas
 apscheduler

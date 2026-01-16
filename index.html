@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VORTEX COMMAND CENTER</title>
+    <title>VORTEX COMMAND CENTER v4.2</title>
     <style>
         :root { --bg: #0a0a0a; --card: #141414; --text: #e0e0e0; --green: #00ff9d; --red: #ff3b3b; --blue: #00d9ff; }
         body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; margin: 0; padding: 20px; }
@@ -42,8 +42,8 @@
     <div class="container">
         <div class="header">
             <div>
-                <div style="font-size: 1.2rem; font-weight: bold;">VORTEX v4.0</div>
-                <div style="font-size: 0.8rem; color: #666;">PIONEER TRADER</div>
+                <div style="font-size: 1.2rem; font-weight: bold;">VORTEX v4.2</div>
+                <div style="font-size: 0.8rem; color: #666;">UNLEASHED PROTOCOL</div>
             </div>
             <div class="status-badge pulse">● LIVE</div>
         </div>
@@ -106,6 +106,9 @@
                 document.getElementById('balance').innerText = `$${parseFloat(data.balance).toFixed(2)}`;
                 document.getElementById('profit').innerText = `+$${data.profit_total}`;
                 document.getElementById('slots').innerText = data.active_slots;
+                if(data.current_stake) {
+                    document.getElementById('stake').innerText = `$${parseFloat(data.current_stake).toFixed(2)}`;
+                }
                 
                 // 2. UPDATE PROGRESS
                 const nextCost = parseFloat(data.next_slot_cost);
@@ -128,7 +131,7 @@
                 
                 if (data.strategies && data.strategies.length > 0) {
                     data.strategies.forEach(slot => {
-                        let colorClass = slot.rsi < 35 ? "profit" : "scanning"; 
+                        let colorClass = slot.rsi < 55 ? "profit" : "scanning"; 
                         if (slot.status && slot.status.includes("BUY")) colorClass = "buy";
                         
                         feed.innerHTML += `
@@ -145,7 +148,7 @@
 
             } catch (error) {
                 console.error("Error:", error);
-                document.getElementById('balance').innerText = "Offline";
+                document.getElementById('balance').innerText = "Connecting...";
             }
         }
 

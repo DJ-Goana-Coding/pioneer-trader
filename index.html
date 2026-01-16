@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VORTEX COMMAND CENTER</title>
+    <style>
+        :root { --bg: #0a0a0a; --card: #141414; --text: #e0e0e0; --green: #00ff9d; --red: #ff3b3b; --blue: #00d9ff; }
+        body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        
+        /* HEADER */
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .status-badge { background: #003300; color: var(--green); padding: 5px 10px; border: 1px solid var(--green); border-radius: 4px; font-weight: bold; }
+        .pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        /* HERO CARDS */
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        .card { background: var(--card); padding: 15px; border-radius: 8px; border: 1px solid #333; }
+        .label { font-size: 0.8rem; color: #888; display: block; margin-bottom: 5px; }
+        .value { font-size: 1.4rem; font-weight: bold; }
+        .profit { color: var(--green); }
+        
+        /* NEXT SLOT PROGRESS */
+        .progress-card { background: var(--card); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #333; }
+        .progress-bar { background: #333; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 10px; }
+        .progress-fill { background: var(--blue); height: 100%; width: 0%; transition: width 0.5s; }
+
+        /* PORTFOLIO & LOGS */
+        .section-title { border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 10px; color: var(--blue); }
+        .log-list { font-size: 0.85rem; max-height: 300px; overflow-y: auto; }
+        .log-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #222; }
+        .buy { color: var(--red); }
+        .scanning { color: #666; }
+        
+        .refresh-btn { width: 100%; background: #222; color: white; border: 1px solid #444; padding: 15px; font-family: inherit; margin-top: 20px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <div>
+                <div style="font-size: 1.2rem; font-weight: bold;">VORTEX v4.0</div>
+                <div style="font-size: 0.8rem; color: #666;">PIONEER TRADER</div>
+            </div>
+            <div class="status-badge pulse">● LIVE</div>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <span class="label">TOTAL EQUITY</span>
+                <span class="value" id="balance">---</span>
+            </div>
+            <div class="card">
+                <span class="label">NET PROFIT</span>
+                <span class="value profit" id="profit">---</span>
+            </div>
+        </div>
+
+        <div class="grid">
+             <div class="card">
+                <span class="label">ACTIVE SLOTS</span>
+                <span class="value" id="slots">---</span>
+            </div>
+             <div class="card">
+                <span class="label">STAKE SIZE</span>
+                <span class="value" id="stake">$10.50</span>
+            </div>
+        </div>
+
+        <div class="progress-card">
+            <span class="label">NEXT SLOT UPGRADE</span>
+            <div style="display: flex; justify-content: space-between; margin-top:5px;">
+                <span style="font-size: 0.9rem;" id="progress-text">Loading...</span>
+            </div>
+        </div>
+
+        <div class="card" style="margin-bottom: 20px;">
+            <div class="section-title">CURRENT HOLDINGS</div>
+            <div id="portfolio-list" style="font-size: 0.9rem; color: #888;">
+                Scanning wallet...
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="section-title">LIVE MARKET SCANNER</div>
+            <div class="log-list" id="scanner-feed">
+                </div>
+        </div>
+
+        <button class="refresh-btn" onclick="fetchData()">🔄 REFRESH SYSTEM</button>
+    </div>
+
+    <script>
+        // POINT THIS TO YOUR RENDER BACKEND
+        const API_URL = "https://pioneer-trader.onrender.com";
+
+        async function fetchData() {
+            try {
+                const response = await fetch(API_URL);
+                const data = await response.json();
+
+                // 1. UPDATE NUMBERS
+                document.getElementById('balance').innerText = `$${parseFloat(data.balance).toFixed(2)}`;
+                document.getElementById('profit').innerText = `+$${data.profit_total}`;
+                document.getElementById('slots').innerText = data.active_slots;
+                
+                // 2. UPDATE PROGRESS
+                const nextCost = parseFloat(data.next_slot_cost);
+                document.getElementById('progress-text').innerText = `$${nextCost.toFixed(2)} profit needed for Slot ${data.active_slots + 1}`;
+
+                // 3. UPDATE PORTFOLIO
+                const portDiv = document.getElementById('portfolio-list');
+                portDiv.innerHTML = "";
+                if (!data.portfolio || Object.keys(data.portfolio).length === 0) {
+                    portDiv.innerHTML = "No active positions. Hunting...";
+                } else {
+                    for (const [coin, amount] of Object.entries(data.portfolio)) {
+                        portDiv.innerHTML += `<div style="color:white; margin-bottom:5px;">💰 ${coin}: ${amount}</div>`;
+                    }
+                }
+
+                // 4. UPDATE SCANNER FEED
+                const feed = document.getElementById('scanner-feed');
+                feed.innerHTML = "";
+                
+                if (data.strategies && data.strategies.length > 0) {
+                    data.strategies.forEach(slot => {
+                        let colorClass = slot.rsi < 35 ? "profit" : "scanning"; 
+                        if (slot.status && slot.status.includes("BUY")) colorClass = "buy";
+                        
+                        feed.innerHTML += `
+                            <div class="log-item">
+                                <span>Slot ${slot.slot} [${slot.strategy[0]}]</span>
+                                <span>${slot.pair}</span>
+                                <span class="${colorClass}">RSI: ${slot.rsi}</span>
+                            </div>
+                        `;
+                    });
+                } else {
+                     feed.innerHTML = "<div style='padding:10px; color:#666;'>Connecting to scanner...</div>";
+                }
+
+            } catch (error) {
+                console.error("Error:", error);
+                document.getElementById('balance').innerText = "Offline";
+            }
+        }
+
+        // Auto-refresh every 5 seconds
+        fetchData();
+        setInterval(fetchData, 5000);
+    </script>
+</body>
+</html>

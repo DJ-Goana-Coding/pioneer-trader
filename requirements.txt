@@ -5,3 +5,4 @@ ccxt
 python-dotenv
 pandas
 apscheduler
+python-dotenv

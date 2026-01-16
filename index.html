@@ -3,54 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VORTEX COMMAND CENTER v4.2</title>
+    <title>VORTEX COMMAND v4.2.1</title>
     <style>
-        :root { --bg: #0a0a0a; --card: #141414; --text: #e0e0e0; --green: #00ff9d; --red: #ff3b3b; --blue: #00d9ff; }
+        :root { --bg: #050505; --card: #111; --text: #eee; --green: #00ff9d; --red: #ff3b3b; --blue: #00d9ff; }
         body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; margin: 0; padding: 20px; }
         .container { max-width: 600px; margin: 0 auto; }
-        
-        /* HEADER */
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .status-badge { background: #003300; color: var(--green); padding: 5px 10px; border: 1px solid var(--green); border-radius: 4px; font-weight: bold; }
-        .pulse { animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-
-        /* HERO CARDS */
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
-        .card { background: var(--card); padding: 15px; border-radius: 8px; border: 1px solid #333; }
-        .label { font-size: 0.8rem; color: #888; display: block; margin-bottom: 5px; }
-        .value { font-size: 1.4rem; font-weight: bold; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid var(--blue); padding-bottom: 10px; }
+        .status-badge { background: #002200; color: var(--green); padding: 5px 12px; border: 1px solid var(--green); border-radius: 4px; font-weight: bold; }
+        .pulse { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+        .card { background: var(--card); padding: 15px; border-radius: 10px; border: 1px solid #222; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .label { font-size: 0.75rem; color: #666; text-transform: uppercase; letter-spacing: 1px; }
+        .value { font-size: 1.5rem; font-weight: bold; display: block; margin-top: 5px; }
         .profit { color: var(--green); }
-        
-        /* NEXT SLOT PROGRESS */
-        .progress-card { background: var(--card); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #333; }
-        .progress-bar { background: #333; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 10px; }
-        .progress-fill { background: var(--blue); height: 100%; width: 0%; transition: width 0.5s; }
-
-        /* PORTFOLIO & LOGS */
-        .section-title { border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 10px; color: var(--blue); }
-        .log-list { font-size: 0.85rem; max-height: 300px; overflow-y: auto; }
-        .log-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #222; }
-        .buy { color: var(--red); }
-        .scanning { color: #666; }
-        
-        .refresh-btn { width: 100%; background: #222; color: white; border: 1px solid #444; padding: 15px; font-family: inherit; margin-top: 20px; cursor: pointer; }
+        .section-title { font-size: 0.9rem; color: var(--blue); margin-bottom: 15px; text-transform: uppercase; font-weight: bold; }
+        .log-list { font-size: 0.8rem; }
+        .log-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #1a1a1a; }
+        .buy-signal { color: var(--red); font-weight: bold; }
+        .refresh-btn { width: 100%; background: #1a1a1a; color: var(--blue); border: 1px solid var(--blue); padding: 15px; font-weight: bold; cursor: pointer; border-radius: 5px; margin-top: 20px; }
     </style>
 </head>
 <body>
-
     <div class="container">
         <div class="header">
             <div>
-                <div style="font-size: 1.2rem; font-weight: bold;">VORTEX v4.2</div>
-                <div style="font-size: 0.8rem; color: #666;">UNLEASHED PROTOCOL</div>
+                <div style="font-size: 1.4rem;">VORTEX <span style="color:var(--blue);">v4.2.1</span></div>
+                <div style="font-size: 0.7rem; color: #555;">SYSTEM: UNLEASHED</div>
             </div>
-            <div class="status-badge pulse">● LIVE</div>
+            <div class="status-badge pulse">● ACTIVE</div>
         </div>
 
         <div class="grid">
             <div class="card">
-                <span class="label">TOTAL EQUITY</span>
+                <span class="label">CASH (USDT)</span>
                 <span class="value" id="balance">---</span>
             </div>
             <div class="card">
@@ -59,100 +45,47 @@
             </div>
         </div>
 
-        <div class="grid">
-             <div class="card">
-                <span class="label">ACTIVE SLOTS</span>
-                <span class="value" id="slots">---</span>
-            </div>
-             <div class="card">
-                <span class="label">STAKE SIZE</span>
-                <span class="value" id="stake">$10.50</span>
-            </div>
-        </div>
-
-        <div class="progress-card">
-            <span class="label">NEXT SLOT UPGRADE</span>
-            <div style="display: flex; justify-content: space-between; margin-top:5px;">
-                <span style="font-size: 0.9rem;" id="progress-text">Loading...</span>
-            </div>
-        </div>
-
         <div class="card" style="margin-bottom: 20px;">
-            <div class="section-title">CURRENT HOLDINGS</div>
-            <div id="portfolio-list" style="font-size: 0.9rem; color: #888;">
-                Scanning wallet...
+            <div class="section-title">PORTFOLIO (COINS HELD)</div>
+            <div id="portfolio-list" style="color: #aaa; line-height: 1.6;">
+                Analyzing Binance Wallet...
             </div>
         </div>
 
         <div class="card">
-            <div class="section-title">LIVE MARKET SCANNER</div>
-            <div class="log-list" id="scanner-feed">
-                </div>
+            <div class="section-title">LIVE HARVESTER SCANNER</div>
+            <div id="scanner-feed" class="log-list">
+                Connecting to Engine...
+            </div>
         </div>
 
-        <button class="refresh-btn" onclick="fetchData()">🔄 REFRESH SYSTEM</button>
+        <button class="refresh-btn" onclick="fetchData()">⚡ REFRESH COMMAND CENTER</button>
     </div>
 
     <script>
-        // POINT THIS TO YOUR RENDER BACKEND
         const API_URL = "https://pioneer-trader.onrender.com";
-
         async function fetchData() {
             try {
-                const response = await fetch(API_URL);
-                const data = await response.json();
-
-                // 1. UPDATE NUMBERS
+                const res = await fetch(API_URL);
+                const data = await res.json();
                 document.getElementById('balance').innerText = `$${parseFloat(data.balance).toFixed(2)}`;
                 document.getElementById('profit').innerText = `+$${data.profit_total}`;
-                document.getElementById('slots').innerText = data.active_slots;
-                if(data.current_stake) {
-                    document.getElementById('stake').innerText = `$${parseFloat(data.current_stake).toFixed(2)}`;
-                }
                 
-                // 2. UPDATE PROGRESS
-                const nextCost = parseFloat(data.next_slot_cost);
-                document.getElementById('progress-text').innerText = `$${nextCost.toFixed(2)} profit needed for Slot ${data.active_slots + 1}`;
+                const port = document.getElementById('portfolio-list');
+                port.innerHTML = Object.keys(data.portfolio).length ? 
+                    Object.entries(data.portfolio).map(([c, a]) => `<b>${c}</b>: ${a}`).join(" | ") : 
+                    "Wallet empty. All funds in USDT.";
 
-                // 3. UPDATE PORTFOLIO
-                const portDiv = document.getElementById('portfolio-list');
-                portDiv.innerHTML = "";
-                if (!data.portfolio || Object.keys(data.portfolio).length === 0) {
-                    portDiv.innerHTML = "No active positions. Hunting...";
-                } else {
-                    for (const [coin, amount] of Object.entries(data.portfolio)) {
-                        portDiv.innerHTML += `<div style="color:white; margin-bottom:5px;">💰 ${coin}: ${amount}</div>`;
-                    }
-                }
-
-                // 4. UPDATE SCANNER FEED
                 const feed = document.getElementById('scanner-feed');
-                feed.innerHTML = "";
-                
-                if (data.strategies && data.strategies.length > 0) {
-                    data.strategies.forEach(slot => {
-                        let colorClass = slot.rsi < 55 ? "profit" : "scanning"; 
-                        if (slot.status && slot.status.includes("BUY")) colorClass = "buy";
-                        
-                        feed.innerHTML += `
-                            <div class="log-item">
-                                <span>Slot ${slot.slot} [${slot.strategy[0]}]</span>
-                                <span>${slot.pair}</span>
-                                <span class="${colorClass}">RSI: ${slot.rsi}</span>
-                            </div>
-                        `;
-                    });
-                } else {
-                     feed.innerHTML = "<div style='padding:10px; color:#666;'>Connecting to scanner...</div>";
-                }
-
-            } catch (error) {
-                console.error("Error:", error);
-                document.getElementById('balance').innerText = "Connecting...";
-            }
+                feed.innerHTML = data.strategies.map(s => `
+                    <div class="log-item">
+                        <span>${s.pair}</span>
+                        <span class="${s.rsi < 55 ? 'buy-signal' : ''}">RSI: ${s.rsi}</span>
+                        <span>${s.status}</span>
+                    </div>
+                `).join("");
+            } catch (e) { document.getElementById('balance').innerText = "OFFLINE"; }
         }
-
-        // Auto-refresh every 5 seconds
         fetchData();
         setInterval(fetchData, 5000);
     </script>

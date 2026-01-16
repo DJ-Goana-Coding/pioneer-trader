@@ -1,39 +1,47 @@
-import os
-import asyncio
-import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
+import asyncio
 from backend.services.vortex import VortexEngine
 
 app = FastAPI()
 
-# 🛡️ CORS PERMISSION: ALLOW VERCEL TO CONNECT
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins (Vercel, Localhost, Mobile)
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-vortex = VortexEngine(active_slots=2)
+# 🟢 THE FIX: Initialize without arguments
+bot = VortexEngine()
 
 @app.on_event("startup")
 async def startup_event():
-    # Start the Heartbeat (Stealth Mode is inside Vortex class)
-    asyncio.create_task(vortex.start_loop())
-    print("🛰️ T.I.A. COMMAND: VORTEX HEARTBEAT ACTIVE [CORS ENABLED]")
+    asyncio.create_task(bot.start_loop())
+
+@app.head("/")
+def health_check():
+    return Response(status_code=200)
 
 @app.get("/")
 def home():
+    # 🟢 FULL DATA STREAM
+    bal = bot.wallet_balance
     return {
-        "status": "🟢 LIVE",
-        "commander": "Darrell",
-        "engine": "Vortex v2.1 (Stealth)",
-        "active_slots": 2,
-        "stake": "10.50 USDT"
+        "status": "💰 LIVE",
+        "balance": bal,
+        "wallet_balance": bal, 
+        "profit_total": f"{bot.total_profit:.2f}",
+        "next_slot_cost": f"{bot.next_slot_price:.2f}",
+        "active_slots": bot.active_slots,
+        "portfolio": bot.held_coins,
+        "strategies": bot.slot_status
     }
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+@app.get("/status")
+def get_status():
+    return {
+        "status": "active",
+        "balance": bot.wallet_balance
+    }

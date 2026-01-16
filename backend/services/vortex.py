@@ -9,17 +9,18 @@ load_dotenv()
 
 class VortexEngine:
     def __init__(self):
+        # --- FIXED CONSTANTS ---
         self.starting_capital = 94.50
         self.min_stake = 10.15
         self.fallback_stake = 10.20
         self.trail_drop = 0.005 
         
+        # --- ALL HUD VARIABLES (FORCE INITIALIZED) ---
         self.wallet_balance = 0.0
         self.total_equity = 0.0
         self.total_profit = 0.0
         self.active_slots = 9
         self.next_slot_price = 10.50
-        
         self.held_coins = {}
         self.peak_prices = {}
         self.slot_status = []
@@ -40,7 +41,6 @@ class VortexEngine:
             holdings = {}
             temp_equity = self.wallet_balance
             
-            # ACCURATE EQUITY CALCULATION
             for coin, amount in balance['total'].items():
                 if amount > 0 and coin not in ['USDT', 'BNB', 'LDUSDT']:
                     try:
@@ -54,42 +54,35 @@ class VortexEngine:
             self.total_profit = self.total_equity - self.starting_capital
             self.held_coins = holdings
             
-            # HARD GOVERNOR: Never allow more than 35 slots or less than 9
+            # HUD Logic: 
             raw_slots = int(self.total_equity / 10.50)
             self.active_slots = max(9, min(raw_slots, 35)) 
             self.next_slot_price = (self.active_slots + 1) * 10.50
-            
-            print(f"📊 HEARTBEAT: Equity ${self.total_equity:.2f} | Balance ${self.wallet_balance:.2f} | Slots {self.active_slots}")
         except Exception as e:
             print(f"Sync Error: {e}")
 
     async def execute_trade(self, pair, side, price=0):
-        if side == 'buy':
-            if self.wallet_balance < self.min_stake: return
+        if side == 'buy' and self.wallet_balance >= self.min_stake:
             try:
                 await self.exchange.create_order(symbol=pair, type='market', side='buy', params={'quoteOrderQty': self.min_stake})
-                print(f"🚀 OMNI-BUY: {pair}")
             except: pass
         elif side == 'sell':
             coin = pair.split('/')[0]
             amount = self.held_coins.get(coin)
-            if not amount: return
-            try:
-                await self.exchange.create_market_sell_order(pair, amount)
-                if coin in self.peak_prices: del self.peak_prices[coin]
-                print(f"💰 TRAIL HARVEST: {pair} CLOSED AT ${price}")
-            except: pass
+            if amount:
+                try:
+                    await self.exchange.create_market_sell_order(pair, amount)
+                    if coin in self.peak_prices: del self.peak_prices[coin]
+                except: pass
 
     async def start_loop(self):
-        print("🔥 VORTEX v4.3.4: SAFETY GOVERNOR ACTIVE")
+        print("🔥 VORTEX v4.3.5: OMNI-STABLE HUD-FIX LIVE")
         while True:
             try:
                 await self.fetch_portfolio()
-                # FETCH INTELLIGENCE POOL
                 tickers = await self.exchange.fetch_tickers()
                 usdt_markets = [t for t in tickers.values() if t['symbol'].endswith('/USDT') and t['quoteVolume'] > 5000000]
                 gainers = sorted(usdt_markets, key=lambda x: x['percentage'], reverse=True)[:10]
-                
                 intel_pool = list(set([f"{c}/USDT" for c in self.held_coins.keys()] + [t['symbol'] for t in gainers]))
 
                 current_scan_data = []
@@ -99,8 +92,8 @@ class VortexEngine:
                         ticker = await self.exchange.fetch_ticker(pair)
                         cur_price = ticker['last']
                         coin = pair.split('/')[0]
-                        
                         is_holding = coin in self.held_coins
+                        
                         ohlcv = await self.exchange.fetch_ohlcv(pair, timeframe='1m', limit=50)
                         df = pd.DataFrame(ohlcv, columns=['ts', 'o', 'h', 'l', 'c', 'v'])
                         rsi = ta.rsi(df['c'], length=14).iloc[-1]
@@ -127,6 +120,5 @@ class VortexEngine:
 
                 self.slot_status = current_scan_data
                 await asyncio.sleep(10)
-            except Exception as e:
-                print(f"Loop Error: {e}")
+            except:
                 await asyncio.sleep(10)

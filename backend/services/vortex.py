@@ -13,6 +13,9 @@ from backend.services.redis_cache import redis_cache
 load_dotenv()
 
 class VortexEngine:
+    # Exchange-specific coins to exclude from trading
+    EXCLUDED_COINS = ['USDT', 'USDC', 'BUSD', 'DAI', 'TUSD', 'MX']
+    
     def __init__(self):
         # 🎯 SLOT CONFIGURATION
         self.starting_capital = 94.50
@@ -98,7 +101,7 @@ class VortexEngine:
             total_holdings_value = 0.0
             
             for coin, amount in balance['total'].items():
-                if amount > 0 and coin not in ['USDT', 'MX']:
+                if amount > 0 and coin not in self.EXCLUDED_COINS:
                     try:
                         ticker = await self.exchange.fetch_ticker(f"{coin}/USDT")
                         val = amount * ticker['last']
@@ -188,12 +191,11 @@ class VortexEngine:
                 if self.exchange:
                     tickers = await self.exchange.fetch_tickers()
                     
-                    exclude = ['USDT', 'USDC', 'BUSD', 'DAI', 'TUSD', 'MX']
                     targets = [
                         t for t in tickers.values() 
                         if t['symbol'].endswith('/USDT') 
                         and t.get('quoteVolume', 0) > 5000000
-                        and t['symbol'].split('/')[0] not in exclude
+                        and t['symbol'].split('/')[0] not in self.EXCLUDED_COINS
                     ][:10]
                     
                     for t in targets:

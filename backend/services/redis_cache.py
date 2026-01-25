@@ -28,7 +28,9 @@ class RedisCache:
             )
             # Test connection
             self.client.ping()
-            print(f"🔴 REDIS: Connected to {self.redis_url.split('@')[-1] if '@' in self.redis_url else 'localhost'}")
+            # Log connection without exposing full URL
+            host_info = self.redis_url.split('@')[-1] if '@' in self.redis_url else 'localhost:6379'
+            print(f"🔴 REDIS: Connected to {host_info}")
         except Exception as e:
             print(f"⚠️ REDIS: Connection failed - {e}. Running in memory-only mode.")
             self.client = None
@@ -71,10 +73,15 @@ class RedisCache:
             data = self.client.hgetall("vortex:portfolio")
             if not data:
                 return None
-            return {
-                k: json.loads(v) if v.startswith('{') or v.startswith('[') else v
-                for k, v in data.items()
-            }
+            result = {}
+            for k, v in data.items():
+                try:
+                    # Try to parse as JSON
+                    result[k] = json.loads(v)
+                except (json.JSONDecodeError, ValueError):
+                    # Keep as string if not valid JSON
+                    result[k] = v
+            return result
         except Exception as e:
             print(f"⚠️ REDIS: Failed to get portfolio - {e}")
             return None

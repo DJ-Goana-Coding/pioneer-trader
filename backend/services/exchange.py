@@ -96,9 +96,26 @@ class ExchangeService:
             return await self.exchange.create_order(symbol, type, side, amount, price)
 
     async def create_market_buy(self, symbol: str, usdt_amount: float):
-        return await self.create_order(
+        """Create a market buy order using USDT amount"""
+        if not self.exchange:
+            raise Exception("Exchange not initialized")
+        
+        if self.mode == "PAPER":
+            return {
+                "id": f"paper_{symbol}_buy",
+                "symbol": symbol,
+                "type": "market",
+                "side": "buy",
+                "amount": usdt_amount,
+                "price": None,
+                "status": "closed",
+                "info": "Paper Trade - No real execution"
+            }
+        
+        return await self.exchange.create_order(
             symbol=symbol,
             type='market',
             side='buy',
-            amount=usdt_amount
+            amount=None,
+            params={'quoteOrderQty': usdt_amount}
         )

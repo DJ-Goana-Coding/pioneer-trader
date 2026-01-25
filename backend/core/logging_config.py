@@ -3,7 +3,6 @@ Centralized logging configuration for Pioneer Trader.
 """
 import logging
 import sys
-from pathlib import Path
 
 
 def setup_logging(name: str = "pioneer-trader", level: str = "INFO") -> logging.Logger:

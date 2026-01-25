@@ -1,6 +1,9 @@
 import ccxt.async_support as ccxt
 import pandas as pd
 from backend.core.config import settings
+from backend.core.logging_config import setup_logging
+
+logger = setup_logging("exchange")
 
 class ExchangeService:
     def __init__(self):
@@ -26,7 +29,7 @@ class ExchangeService:
             self.exchange = ccxt.binance({'enableRateLimit': True, 'options': {'defaultType': 'future'}})
             
         await self.exchange.load_markets()
-        print(f"Exchange initialized in {self.mode} mode")
+        logger.info(f"Exchange initialized in {self.mode} mode")
 
     async def shutdown(self):
         if self.exchange:

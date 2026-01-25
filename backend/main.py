@@ -3,6 +3,9 @@ import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.services.vortex import VortexEngine
+from backend.core.logging_config import setup_logging
+
+logger = setup_logging("backend.main")
 
 app = FastAPI()
 
@@ -18,6 +21,7 @@ bot = VortexEngine()
 
 @app.on_event("startup")
 async def startup_event():
+    logger.info("🚀 Starting Pioneer Trader backend...")
     asyncio.create_task(bot.start_loop())
 
 # FIX: Allow HEAD requests so Render health checks stay green
@@ -36,4 +40,5 @@ async def home():
             "slot_status": bot.slot_status
         }
     except Exception as e:
+        logger.error(f"Error in home endpoint: {e}")
         return {"status": "ERROR", "message": str(e)}

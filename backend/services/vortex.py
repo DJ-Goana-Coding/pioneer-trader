@@ -5,8 +5,11 @@ import pandas as pd
 import pandas_ta as ta
 from datetime import datetime
 from dotenv import load_dotenv
+from backend.core.logging_config import setup_logging
 
 load_dotenv()
+
+logger = setup_logging("vortex")
 
 class VortexEngine:
     def __init__(self):
@@ -41,16 +44,16 @@ class VortexEngine:
                     except: continue
             self.held_coins = holdings
         except Exception as e:
-            print(f"❌ PORTFOLIO FETCH ERROR: {e}")
+            logger.error(f"❌ PORTFOLIO FETCH ERROR: {e}")
 
     async def start_loop(self):
-        print("🔍 VORTEX v4.5.2: DIAGNOSTIC MODE ACTIVE")
+        logger.info("🔍 VORTEX v4.5.2: DIAGNOSTIC MODE ACTIVE")
         while True:
             try:
                 await self.fetch_portfolio()
                 now = datetime.now().strftime('%H:%M:%S')
-                print(f"--- [DIAGNOSTIC {now}] ---")
-                print(f"💰 WALLET: ${self.wallet_balance:.2f} | 📦 HOLDING: {list(self.held_coins.keys())}")
+                logger.info(f"--- [DIAGNOSTIC {now}] ---")
+                logger.info(f"💰 WALLET: ${self.wallet_balance:.2f} | 📦 HOLDING: {list(self.held_coins.keys())}")
                 
                 # Fetch only top USDT markets
                 tickers = await self.exchange.fetch_tickers()
@@ -59,16 +62,16 @@ class VortexEngine:
                 for t in targets:
                     pair = t['symbol']
                     if pair.split('/')[0] not in self.held_coins and self.wallet_balance > 11:
-                        print(f"🚀 ATTEMPTING BUY: {pair}")
+                        logger.info(f"🚀 ATTEMPTING BUY: {pair}")
                         try:
                             # ATTEMPT MARKET BUY
                             order = await self.exchange.create_order(pair, 'market', 'buy', params={'quoteOrderQty': self.min_stake})
-                            print(f"✅ BUY SUCCESS: {pair}")
+                            logger.info(f"✅ BUY SUCCESS: {pair}")
                         except Exception as e:
-                            print(f"❌ BUY FAILED: {pair} | REASON: {e}")
+                            logger.error(f"❌ BUY FAILED: {pair} | REASON: {e}")
                             await asyncio.sleep(1)
                 
                 await asyncio.sleep(20)
             except Exception as e:
-                print(f"⚠️ MAIN ERROR: {e}")
+                logger.error(f"⚠️ MAIN ERROR: {e}")
                 await asyncio.sleep(20)

@@ -1,9 +1,12 @@
 import subprocess
 import time
 import sys
+from backend.core.logging_config import setup_logging
+
+logger = setup_logging("run_app")
 
 def main():
-    print("Starting Backend...")
+    logger.info("Starting Backend...")
     # Start FastAPI Backend in the background
     backend = subprocess.Popen(
         [sys.executable, "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
@@ -12,7 +15,7 @@ def main():
     # Wait a few seconds for backend to initialize
     time.sleep(5)
     
-    print("Starting Frontend...")
+    logger.info("Starting Frontend...")
     # Start Streamlit Frontend in the foreground
     # We use sys.executable to ensure we use the same python environment
     subprocess.run(

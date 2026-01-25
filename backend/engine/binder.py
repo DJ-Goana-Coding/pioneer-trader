@@ -1,5 +1,9 @@
 
 from typing import Dict, Type
+from backend.core.logging_config import setup_logging
+
+logger = setup_logging("binder")
+
 # Mocking settings to avoid another import error
 class Settings:
     PROJECT_NAME = "Citadel"
@@ -11,10 +15,10 @@ from registry.registry import Registry, StrategySpec
 class BaseStrategy:
     def __init__(self, spec: StrategySpec):
         self.spec = spec
-        print(f"   🔧 Initialized Logic: {spec.name} [{spec.id}]")
+        logger.info(f"   🔧 Initialized Logic: {spec.name} [{spec.id}]")
 
     def run(self, market_data):
-        print(f"   🚀 Executing {self.spec.id} with data: {market_data}")
+        logger.info(f"   🚀 Executing {self.spec.id} with data: {market_data}")
 
 class EMATrendStrategy(BaseStrategy): pass
 class RSIReversionStrategy(BaseStrategy): pass
@@ -29,7 +33,7 @@ class RuntimeBinder:
         self.active_instances = {}
 
     def bind_and_load(self):
-        print("\n🔌 BINDING CODEX TO RUNTIME...")
+        logger.info("\n🔌 BINDING CODEX TO RUNTIME...")
         loaded_count = 0
         for strat_id, spec in self.registry.strategies.items():
             if not spec.enabled: continue
@@ -39,7 +43,7 @@ class RuntimeBinder:
                 self.active_instances[strat_id] = strat_class(spec)
                 loaded_count += 1
             else:
-                print(f"   ⚠️ WARNING: No code mapped for {strat_id}")
+                logger.warning(f"   ⚠️ WARNING: No code mapped for {strat_id}")
         
-        print(f"✅ BINDER COMPLETE. {loaded_count} Strategies Ready.\n")
+        logger.info(f"✅ BINDER COMPLETE. {loaded_count} Strategies Ready.\n")
         return self.active_instances

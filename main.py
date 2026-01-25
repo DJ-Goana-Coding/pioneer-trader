@@ -2,6 +2,9 @@ from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 from backend.services.vortex import VortexEngine
+from backend.core.logging_config import setup_logging
+
+logger = setup_logging("main")
 
 app = FastAPI()
 
@@ -18,6 +21,7 @@ bot = VortexEngine()
 
 @app.on_event("startup")
 async def startup_event():
+    logger.info("🚀 Starting VortexEngine...")
     asyncio.create_task(bot.start_loop())
 
 @app.head("/")

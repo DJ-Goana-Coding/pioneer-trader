@@ -1,5 +1,14 @@
 # Security Guidelines
 
+## ⚠️ CRITICAL SECURITY NOTICE
+
+**API credentials were previously exposed in this repository's git history (commit c52b66d).**
+
+If you were using the Binance API keys that were committed:
+1. **IMMEDIATELY revoke those keys** in your Binance account settings
+2. Generate new API keys with appropriate restrictions
+3. Update your local `.env` file with the new credentials
+
 ## Environment Variables and Secrets
 
 **IMPORTANT:** Never commit real API credentials to the repository.

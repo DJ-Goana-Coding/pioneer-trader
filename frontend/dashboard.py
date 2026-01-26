@@ -32,8 +32,29 @@ def get_status():
     try:
         r = requests.get(f"{API_URL}/engine/status", timeout=2)
         return r.json()
-    except:
+    except Exception:
         return None
+
+def get_cockpit_status():
+    try:
+        r = requests.get(f"{API_URL}/cockpit/status", timeout=2)
+        return r.json()
+    except Exception:
+        return None
+
+def authorize_admiral(force=False):
+    try:
+        r = requests.post(f"{API_URL}/cockpit/authorize", json={"force": force}, timeout=2)
+        return r.json()
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+def revoke_admiral(reason="Manual revocation"):
+    try:
+        r = requests.post(f"{API_URL}/cockpit/revoke", json={"reason": reason}, timeout=2)
+        return r.json()
+    except Exception as e:
+        return {"success": False, "message": str(e)}
 
 def toggle_engine(action):
     try:
@@ -41,7 +62,7 @@ def toggle_engine(action):
         st.toast(f"COMMAND SENT: {action.upper()}", icon="🚀")
         time.sleep(1)
         st.rerun()
-    except:
+    except Exception:
         st.error("COMMS LINK FAILED")
 
 # --- SIDEBAR (CONTROLS) ---
@@ -57,6 +78,77 @@ with st.sidebar:
         st.warning("SYSTEM: OFFLINE")
         if st.button("🔥 IGNITE VORTEX", use_container_width=True):
             toggle_engine("start")
+    
+    st.divider()
+    
+    # --- T.I.A. COCKPIT CONTROLS ---
+    st.header("🦎 T.I.A. COCKPIT")
+    cockpit_status = get_cockpit_status()
+    
+    if cockpit_status:
+        # T.I.A. Status
+        tia = cockpit_status.get("tia", {})
+        risk_level = tia.get("risk_level", "UNKNOWN")
+        confidence = tia.get("confidence", 0) * 100
+        
+        # Risk level indicator
+        if risk_level == "LOW":
+            st.success(f"🟢 RISK: {risk_level}")
+        elif risk_level == "MEDIUM":
+            st.warning(f"🟡 RISK: {risk_level}")
+        else:
+            st.error(f"🔴 RISK: {risk_level}")
+        
+        st.caption(f"Confidence: {confidence:.0f}%")
+        st.caption(tia.get("message", ""))
+        
+        st.divider()
+        
+        # Admiral Authorization Status
+        auth = cockpit_status.get("authorization", {})
+        is_authorized = auth.get("authorized", False)
+        
+        if is_authorized:
+            st.success("⚔️ ADMIRAL: AUTHORIZED")
+            admiral_info = auth.get("admiral", {})
+            enabled_count = len(admiral_info.get("enabled_capabilities", []))
+            st.caption(f"Premium Capabilities: {enabled_count}")
+            
+            # Revoke button
+            if st.button("🔒 REVOKE ACCESS", use_container_width=True):
+                result = revoke_admiral()
+                if result.get("success"):
+                    st.toast("Admiral access REVOKED", icon="🔒")
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error(f"Failed: {result.get('message')}")
+        else:
+            st.warning("⚔️ ADMIRAL: RESTRICTED")
+            st.caption("Base capabilities only")
+            
+            # Authorize button
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("✅ AUTHORIZE", use_container_width=True):
+                    result = authorize_admiral()
+                    if result.get("success"):
+                        st.toast("Admiral AUTHORIZED", icon="✅")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error(f"Denied: {result.get('message')}")
+            with col2:
+                if st.button("⚠️ FORCE", use_container_width=True):
+                    result = authorize_admiral(force=True)
+                    if result.get("success"):
+                        st.toast("Admiral FORCED AUTH", icon="⚠️")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error(f"Failed: {result.get('message')}")
+    else:
+        st.error("Cockpit Offline")
             
     st.divider()
     st.markdown("**STRATEGY OVERLAY**")
@@ -73,6 +165,56 @@ if status:
     m4.metric("LATENCY", "12ms")
 else:
     st.error("⚠️ UNABLE TO CONNECT TO BACKEND API (Port 8000)")
+
+# 1.5. T.I.A. Cockpit Status Banner
+cockpit_status = get_cockpit_status()
+if cockpit_status:
+    st.divider()
+    st.subheader("🌉 T.I.A. → ADMIRAL BRIDGE")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        tia = cockpit_status.get("tia", {})
+        risk_level = tia.get("risk_level", "UNKNOWN")
+        
+        if risk_level == "LOW":
+            st.metric("T.I.A. Risk Level", "🟢 LOW", help="System posture excellent")
+        elif risk_level == "MEDIUM":
+            st.metric("T.I.A. Risk Level", "🟡 MEDIUM", help="Elevated risk detected")
+        else:
+            st.metric("T.I.A. Risk Level", "🔴 HIGH", help="HIGH RISK: Defensive posture")
+    
+    with col2:
+        auth = cockpit_status.get("authorization", {})
+        is_authorized = auth.get("authorized", False)
+        
+        if is_authorized:
+            st.metric("Admiral Status", "⚔️ AUTHORIZED", help="Premium capabilities enabled")
+        else:
+            st.metric("Admiral Status", "🔒 RESTRICTED", help="Base capabilities only")
+    
+    with col3:
+        if is_authorized:
+            admiral_info = auth.get("admiral", {})
+            premium_caps = admiral_info.get("premium_capabilities", [])
+            st.metric("Premium Features", len(premium_caps), help="Total premium capabilities")
+        else:
+            st.metric("Premium Features", "0", delta="Locked", delta_color="off")
+    
+    # Show premium capabilities if authorized
+    if is_authorized:
+        with st.expander("⚔️ PREMIUM CAPABILITIES", expanded=False):
+            admiral_info = auth.get("admiral", {})
+            enabled_caps = admiral_info.get("enabled_capabilities", [])
+            
+            cap_cols = st.columns(3)
+            for idx, cap in enumerate(enabled_caps):
+                with cap_cols[idx % 3]:
+                    # Format capability name
+                    display_name = cap.replace("_", " ").title()
+                    st.markdown(f"✅ **{display_name}**")
+
 
 # 2. Visualizer (The Chart)
 st.divider()

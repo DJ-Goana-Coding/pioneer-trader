@@ -5,9 +5,15 @@ services:
     buildCommand: "./build.sh"
     startCommand: "./start.sh"
     envVars:
-      - key: BINANCE_API_KEY
+      - key: MEXC_API_KEY
         sync: false
-      - key: BINANCE_SECRET  # <--- UPDATED TO MATCH YOUR KEY
+      - key: MEXC_SECRET
         sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: REDIS_ENABLED
+        value: "True"
+      - key: EXECUTION_MODE
+        value: LIVE
       - key: PORT
         value: 10000

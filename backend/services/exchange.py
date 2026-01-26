@@ -1,3 +1,6 @@
+# ================================================================
+# 🔌 EXCHANGE SERVICE - MEXC MIGRATION
+# ================================================================
 import ccxt.async_support as ccxt
 import pandas as pd
 from backend.core.config import settings
@@ -8,25 +11,39 @@ class ExchangeService:
         self.mode = settings.EXECUTION_MODE
 
     async def initialize(self):
+        """Initialize MEXC exchange connection"""
+        
         exchange_config = {
-            'apiKey': settings.BINANCE_API_KEY,
-            'secret': settings.BINANCE_SECRET_KEY,
+            'apiKey': settings.MEXC_API_KEY,
+            'secret': settings.MEXC_SECRET,
             'enableRateLimit': True,
-            'options': {'defaultType': 'future'}
+            'options': {
+                'defaultType': 'spot',
+                'createMarketBuyOrderRequiresPrice': False
+            }
         }
         
-        if self.mode == "TESTNET":
-            self.exchange = ccxt.binance(exchange_config)
-            self.exchange.set_sandbox_mode(True)
-        elif self.mode == "LIVE":
-            self.exchange = ccxt.binance(exchange_config)
-        else: # PAPER
-            # For PAPER, we still use the exchange for data, but we won't execute real trades
-            # We might want to use a public client or just the same client but be careful in OMS
-            self.exchange = ccxt.binance({'enableRateLimit': True, 'options': {'defaultType': 'future'}})
+        if self.mode == "PAPER":
+            self.exchange = ccxt.mexc({
+                'enableRateLimit': True,
+                'options': {'defaultType': 'spot'}
+            })
+            print("📝 Exchange initialized in PAPER mode (data only)")
+            
+        elif self.mode == "TESTNET":
+            print("⚠️ MEXC has no testnet - using PAPER mode")
+            self.exchange = ccxt.mexc({
+                'enableRateLimit': True,
+                'options': {'defaultType': 'spot'}
+            })
+            self.mode = "PAPER"
+            
+        else:
+            self.exchange = ccxt.mexc(exchange_config)
+            print("🔥 Exchange initialized in LIVE mode")
             
         await self.exchange.load_markets()
-        print(f"Exchange initialized in {self.mode} mode")
+        print(f"✅ MEXC Markets loaded: {len(self.exchange.markets)} pairs available")
 
     async def shutdown(self):
         if self.exchange:
@@ -46,26 +63,59 @@ class ExchangeService:
             raise Exception("Exchange not initialized")
         return await self.exchange.fetch_ticker(symbol)
 
+    async def fetch_balance(self):
+        if not self.exchange:
+            raise Exception("Exchange not initialized")
+        return await self.exchange.fetch_balance()
+
     async def create_order(self, symbol: str, type: str, side: str, amount: float, price: float = None):
         if not self.exchange:
             raise Exception("Exchange not initialized")
         
-        # In PAPER mode, we mock the execution here or in OMS. 
-        # But strictly speaking, the exchange service should just talk to the exchange.
-        # If we are in PAPER mode, we shouldn't be calling this for real execution unless we want to test the API (which we don't for paper).
-        # So we'll assume OMS handles the "don't call this in paper mode" logic, OR we handle it here.
-        # Let's handle it here for safety.
-        
         if self.mode == "PAPER":
             return {
-                "id": "paper_trade_id",
+                "id": f"paper_{symbol}_{side}",
                 "symbol": symbol,
                 "type": type,
                 "side": side,
                 "amount": amount,
                 "price": price,
-                "status": "closed", # Instant fill for paper
-                "info": "Paper Trade"
+                "status": "closed",
+                "info": "Paper Trade - No real execution"
             }
-            
-        return await self.exchange.create_order(symbol, type, side, amount, price)
+        
+        if type == 'market' and side == 'buy':
+            return await self.exchange.create_order(
+                symbol=symbol,
+                type='market',
+                side='buy',
+                amount=None,
+                params={'quoteOrderQty': amount}
+            )
+        else:
+            return await self.exchange.create_order(symbol, type, side, amount, price)
+
+    async def create_market_buy(self, symbol: str, usdt_amount: float):
+        """Create a market buy order using USDT amount"""
+        if not self.exchange:
+            raise Exception("Exchange not initialized")
+        
+        if self.mode == "PAPER":
+            return {
+                "id": f"paper_{symbol}_buy",
+                "symbol": symbol,
+                "type": "market",
+                "side": "buy",
+                "amount": usdt_amount,
+                "price": None,
+                "status": "closed",
+                "info": "Paper Trade - No real execution"
+            }
+        
+        return await self.exchange.create_order(
+            symbol=symbol,
+            type='market',
+            side='buy',
+            amount=None,
+            params={'quoteOrderQty': usdt_amount}
+        )

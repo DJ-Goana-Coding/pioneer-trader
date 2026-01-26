@@ -4,6 +4,9 @@
 import ccxt.async_support as ccxt
 import os
 import asyncio
+from backend.core.logging_config import setup_logging
+
+logger = setup_logging("strategy_engine")
 
 class StrategyEngine:
     def __init__(self):
@@ -29,7 +32,7 @@ class StrategyEngine:
     async def reload_strategy(self, name: str) -> bool:
         self.last_reload = "Success"
         self.last_strategy = name
-        print(f"🔄 Reloading Strategy: {name}")
+        logger.info(f"🔄 Reloading Strategy: {name}")
         return True
 
     async def get_telemetry(self) -> dict:

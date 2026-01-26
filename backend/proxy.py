@@ -2,6 +2,9 @@
 import uvicorn
 from fastapi import FastAPI
 import os
+from backend.core.logging_config import setup_logging
+
+logger = setup_logging("proxy")
 
 # Define the Proxy App
 app = FastAPI()
@@ -16,5 +19,5 @@ async def health():
 
 if __name__ == "__main__":
     # Bind explicitly to Port 10000 (Render's Requirement)
-    print("🚀 PROXY STARTING ON PORT 10000")
+    logger.info("🚀 PROXY STARTING ON PORT 10000")
     uvicorn.run(app, host="0.0.0.0", port=10000)

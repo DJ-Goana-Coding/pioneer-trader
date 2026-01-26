@@ -4,6 +4,9 @@
 import ccxt.async_support as ccxt
 import pandas as pd
 from backend.core.config import settings
+from backend.core.logging_config import setup_logging
+
+logger = setup_logging("exchange")
 
 class ExchangeService:
     def __init__(self):
@@ -43,6 +46,7 @@ class ExchangeService:
             print("🔥 Exchange initialized in LIVE mode")
             
         await self.exchange.load_markets()
+        logger.info(f"Exchange initialized in {self.mode} mode")
         print(f"✅ MEXC Markets loaded: {len(self.exchange.markets)} pairs available")
 
     async def shutdown(self):

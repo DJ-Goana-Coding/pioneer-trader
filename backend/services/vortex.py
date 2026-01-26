@@ -8,9 +8,12 @@ import pandas as pd
 import pandas_ta as ta
 from datetime import datetime
 from dotenv import load_dotenv
+from backend.core.logging_config import setup_logging
 from backend.services.redis_cache import redis_cache
 
 load_dotenv()
+
+logger = setup_logging("vortex")
 
 class VortexEngine:
     # Exchange-specific coins to exclude from trading
@@ -134,7 +137,7 @@ class VortexEngine:
             self._persist_state_to_redis()
             
         except Exception as e:
-            print(f"❌ PORTFOLIO FETCH ERROR: {e}")
+            logger.error(f"❌ PORTFOLIO FETCH ERROR: {e}")
 
     async def execute_buy(self, pair: str) -> bool:
         """Execute a market buy order with MEXC-compatible params"""
@@ -166,6 +169,7 @@ class VortexEngine:
             return False
 
     async def start_loop(self):
+        logger.info("🔍 VORTEX v4.5.2: DIAGNOSTIC MODE ACTIVE")
         """Main trading loop - runs every 20 seconds"""
         print("🔍 VORTEX V4.6: MEXC + REDIS DIAGNOSTIC MODE ACTIVE")
         
@@ -174,6 +178,24 @@ class VortexEngine:
                 await self.fetch_portfolio()
                 
                 now = datetime.now().strftime('%H:%M:%S')
+                logger.info(f"--- [DIAGNOSTIC {now}] ---")
+                logger.info(f"💰 WALLET: ${self.wallet_balance:.2f} | 📦 HOLDING: {list(self.held_coins.keys())}")
+                
+                # Fetch only top USDT markets
+                tickers = await self.exchange.fetch_tickers()
+                targets = [t for t in tickers.values() if t['symbol'].endswith('/USDT') and t['quoteVolume'] > 10000000][:10]
+
+                for t in targets:
+                    pair = t['symbol']
+                    if pair.split('/')[0] not in self.held_coins and self.wallet_balance > 11:
+                        logger.info(f"🚀 ATTEMPTING BUY: {pair}")
+                        try:
+                            # ATTEMPT MARKET BUY
+                            order = await self.exchange.create_order(pair, 'market', 'buy', params={'quoteOrderQty': self.min_stake})
+                            logger.info(f"✅ BUY SUCCESS: {pair}")
+                        except Exception as e:
+                            logger.error(f"❌ BUY FAILED: {pair} | REASON: {e}")
+                            await asyncio.sleep(1)
                 print(f"\n--- [VORTEX {now}] ---")
                 print(f"💰 WALLET: ${self.wallet_balance:.2f} | 📦 HOLDINGS: {list(self.held_coins.keys())}")
                 print(f"📈 EQUITY: ${self.total_equity:.2f} | 💵 P/L: ${self.total_profit:+.2f}")
@@ -213,6 +235,8 @@ class VortexEngine:
                 await asyncio.sleep(20)
                 
             except Exception as e:
+                logger.error(f"⚠️ MAIN ERROR: {e}")
+                await asyncio.sleep(20)
                 print(f"⚠️ VORTEX ERROR: {e}")
                 await asyncio.sleep(20)
 

@@ -1,0 +1,49 @@
+/**
+ * Terminal Theme
+ * Classic terminal/console theme with monospace fonts and minimal colors
+ */
+
+:root {
+  /* Color Palette */
+  --primary-color: #00ff00;
+  --secondary-color: #00cc00;
+  --accent-color: #00ffcc;
+  --background-color: #000000;
+  --surface-color: #0d0d0d;
+  --text-color: #00ff00;
+  --text-secondary: #009900;
+  --border-color: #00ff00;
+  --error-color: #ff0000;
+  --success-color: #00ff00;
+  --warning-color: #ffff00;
+  
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  
+  /* Typography */
+  --font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  --font-size-sm: 12px;
+  --font-size-md: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 20px;
+  
+  /* Effects */
+  --border-radius: 0px;
+  --box-shadow: none;
+  --transition-speed: 0.1s;
+  
+  /* Terminal cursor */
+  --cursor-color: #00ff00;
+  --cursor-blink: blink 1s step-end infinite;
+}
+
+body {
+  background-color: var(--background-color);
+  color: var(--text-color);
+  font-family: var(--font-family);
+  text-shadow: 0 0 2px var(--primary-color);
+}

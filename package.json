@@ -1,0 +1,31 @@
+{
+  "name": "ui-stencil-pack",
+  "version": "1.0.0",
+  "description": "A modular, themeable UI stencil pack built from clean web components",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "python3 -m http.server 8000",
+    "start": "python3 -m http.server 8000",
+    "test": "echo \"No tests specified yet\" && exit 0"
+  },
+  "keywords": [
+    "ui",
+    "components",
+    "web-components",
+    "themes",
+    "dashboard",
+    "trading",
+    "monitoring",
+    "governance"
+  ],
+  "author": "DJ-Goana-Coding",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DJ-Goana-Coding/pioneer-trader.git"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

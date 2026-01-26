@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitoring Dashboard</title>
+    <link rel="stylesheet" href="../../themes/terminal/theme.css">
+    <style>
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: var(--spacing-md);
+            padding: var(--spacing-lg);
+        }
+        .widget {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: var(--spacing-md);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Monitoring Dashboard</h1>
+    </header>
+    
+    <main class="dashboard-grid">
+        <div class="widget">
+            <h2>System Status</h2>
+            <p>Overall system health indicators</p>
+        </div>
+        
+        <div class="widget">
+            <h2>Active Agents</h2>
+            <p>Status of all running agents</p>
+        </div>
+        
+        <div class="widget">
+            <h2>Network Activity</h2>
+            <p>Network requests and responses</p>
+        </div>
+        
+        <div class="widget">
+            <h2>Error Logs</h2>
+            <p>Recent errors and warnings</p>
+        </div>
+    </main>
+    
+    <script type="module">
+        // Future: Import monitoring-specific components
+        console.log('Monitoring Dashboard initialized');
+    </script>
+</body>
+</html>

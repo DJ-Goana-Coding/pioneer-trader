@@ -1,0 +1,47 @@
+/**
+ * Rainforest Theme
+ * Natural, earthy theme with green tones inspired by lush rainforests
+ */
+
+:root {
+  /* Color Palette */
+  --primary-color: #2d6a4f;
+  --secondary-color: #52b788;
+  --accent-color: #95d5b2;
+  --background-color: #1b4332;
+  --surface-color: #2d6a4f;
+  --text-color: #d8f3dc;
+  --text-secondary: #b7e4c7;
+  --border-color: #52b788;
+  --error-color: #e63946;
+  --success-color: #74c69d;
+  --warning-color: #f4a261;
+  
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  
+  /* Typography */
+  --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  --font-size-sm: 12px;
+  --font-size-md: 14px;
+  --font-size-lg: 18px;
+  --font-size-xl: 24px;
+  
+  /* Effects */
+  --border-radius: 8px;
+  --box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --transition-speed: 0.3s;
+  
+  /* Nature-inspired gradients */
+  --gradient-primary: linear-gradient(135deg, #2d6a4f 0%, #52b788 100%);
+}
+
+body {
+  background-color: var(--background-color);
+  color: var(--text-color);
+  font-family: var(--font-family);
+}

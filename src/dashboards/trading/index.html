@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Dashboard</title>
+    <link rel="stylesheet" href="../../themes/cyberpunk/theme.css">
+    <style>
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: var(--spacing-md);
+            padding: var(--spacing-lg);
+        }
+        .widget {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: var(--spacing-md);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Trading Dashboard</h1>
+    </header>
+    
+    <main class="dashboard-grid">
+        <div class="widget">
+            <h2>Market Overview</h2>
+            <p>Real-time market data will be displayed here</p>
+        </div>
+        
+        <div class="widget">
+            <h2>Active Positions</h2>
+            <p>Current trading positions</p>
+        </div>
+        
+        <div class="widget">
+            <h2>Order Book</h2>
+            <p>Live order book data</p>
+        </div>
+        
+        <div class="widget">
+            <h2>Performance Metrics</h2>
+            <p>Trading performance indicators</p>
+        </div>
+    </main>
+    
+    <script type="module">
+        // Future: Import trading-specific components and adaptors
+        console.log('Trading Dashboard initialized');
+    </script>
+</body>
+</html>

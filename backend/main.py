@@ -9,6 +9,7 @@ from backend.core.logging_config import setup_logging
 from backend.services.tia_agent import tia_agent
 from backend.services.admiral_engine import admiral_engine
 from backend.services.tia_admiral_bridge import tia_admiral_bridge
+from backend.services.garage_manager import garage_manager
 from backend.routers.cockpit import router as cockpit_router
 
 logger = setup_logging("backend.main")
@@ -30,6 +31,7 @@ bot = VortexEngine()
 app.state.tia_agent = tia_agent
 app.state.admiral_engine = admiral_engine
 app.state.tia_admiral_bridge = tia_admiral_bridge
+app.state.garage_manager = garage_manager
 app.state.vortex = bot
 
 # Include routers
@@ -41,6 +43,7 @@ async def startup_event():
     logger.info("🦎 T.I.A. Cockpit: ACTIVE")
     logger.info("⚔️ Admiral Engine: ACTIVE")
     logger.info("🌉 T.I.A.-Admiral Bridge: ACTIVE")
+    logger.info("🏁 Genesis Garage Manager: ACTIVE")
     asyncio.create_task(bot.start_loop())
 
 # FIX: Allow HEAD requests so Render health checks stay green

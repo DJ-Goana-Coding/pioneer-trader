@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from backend.services.tia_agent import tia_agent
 from backend.services.admiral_engine import admiral_engine
 from backend.services.tia_admiral_bridge import tia_admiral_bridge
+from backend.services.garage_manager import garage_manager, GarageBay
 
 router = APIRouter(prefix="/cockpit", tags=["cockpit"])
 
@@ -181,6 +182,102 @@ async def cockpit_health():
         "components": {
             "tia_agent": "ACTIVE",
             "admiral_engine": "ACTIVE",
-            "tia_admiral_bridge": "ACTIVE"
+            "tia_admiral_bridge": "ACTIVE",
+            "garage_manager": "ACTIVE"
         }
+    }
+
+
+# ═══════════════════════════════════════════════════════════
+# GARAGE ENDPOINTS
+# ═══════════════════════════════════════════════════════════
+
+@router.get("/garage/status")
+async def get_garage_status():
+    """Get Genesis Garage status
+    
+    Returns:
+        Complete garage status including active bay and available Ferraris
+    """
+    garage_status = garage_manager.get_garage_status()
+    tia_status = tia_agent.get_status()
+    
+    return {
+        "garage": garage_status,
+        "tia_risk": tia_status["risk_level"],
+        "recommended_bay": garage_manager.get_bay_for_risk(
+            tia_agent.current_risk
+        ).value
+    }
+
+
+@router.post("/garage/select")
+async def select_ferrari(bay: Optional[str] = None):
+    """Select a Ferrari from the garage
+    
+    Args:
+        bay: Optional bay name to force selection (01_ELITE, 02_ATOMIC, etc.)
+             If not provided, T.I.A. selects based on risk level
+    
+    Returns:
+        Selection result with active Ferrari details
+    """
+    try:
+        force_bay = GarageBay(bay) if bay else None
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid bay: {bay}. Must be one of: {[b.value for b in GarageBay]}"
+        )
+    
+    engine = garage_manager.select_ferrari(force_bay=force_bay)
+    
+    if engine:
+        return {
+            "success": True,
+            "message": f"Ferrari {garage_manager.current_bay.value} selected and active",
+            "active_bay": garage_manager.current_bay.value,
+            "engine_status": engine.get_status() if hasattr(engine, 'get_status') else None
+        }
+    else:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to load Ferrari from bay {bay or 'auto-selected'}"
+        )
+
+
+@router.post("/garage/reload")
+async def reload_garage_engines():
+    """Reload all garage engines (clear cache)
+    
+    Useful after manually updating Ferrari code.
+    
+    Returns:
+        Reload confirmation
+    """
+    garage_manager.reload_engines()
+    
+    return {
+        "success": True,
+        "message": "Garage engines cache cleared. Engines will reload on next selection."
+    }
+
+
+@router.post("/garage/execute")
+async def execute_garage_strategy(market_data: dict, config: Optional[dict] = None):
+    """Execute the currently active Ferrari's strategy
+    
+    Args:
+        market_data: Current market data and indicators
+        config: Optional strategy configuration
+    
+    Returns:
+        Trading signals and recommendations from active Ferrari
+    """
+    result = garage_manager.execute_current_strategy(market_data, config)
+    
+    return {
+        "result": result,
+        "active_bay": garage_manager.current_bay.value if garage_manager.current_bay else None,
+        "tia_risk": tia_agent.get_status()["risk_level"]
     }

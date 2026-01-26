@@ -32,14 +32,14 @@ def get_status():
     try:
         r = requests.get(f"{API_URL}/engine/status", timeout=2)
         return r.json()
-    except:
+    except Exception:
         return None
 
 def get_cockpit_status():
     try:
         r = requests.get(f"{API_URL}/cockpit/status", timeout=2)
         return r.json()
-    except:
+    except Exception:
         return None
 
 def authorize_admiral(force=False):
@@ -62,7 +62,7 @@ def toggle_engine(action):
         st.toast(f"COMMAND SENT: {action.upper()}", icon="🚀")
         time.sleep(1)
         st.rerun()
-    except:
+    except Exception:
         st.error("COMMS LINK FAILED")
 
 # --- SIDEBAR (CONTROLS) ---

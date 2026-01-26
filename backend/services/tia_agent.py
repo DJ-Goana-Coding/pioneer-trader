@@ -5,7 +5,6 @@
 # Pattern adapted from perimeter-scout architecture
 # ================================================================
 
-import time
 from enum import Enum
 from typing import Dict, Optional, Any
 from datetime import datetime

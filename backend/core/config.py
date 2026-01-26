@@ -1,24 +1,37 @@
+# ================================================================
+# ⚙️ PIONEER TRADER: UNIVERSAL CONFIG
+# ================================================================
 import os
-from typing import Literal
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import BaseModel
 
-class Settings(BaseSettings):
-    PROJECT_NAME: str = "Pioneer-Admiral V1"
-    VERSION: str = "1.0.0"
+class Settings(BaseModel):
+    PROJECT_NAME: str = "Pioneer Trader"
     
-    # Security
-    SECRET_KEY: str
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    # MEXC EXCHANGE CREDENTIALS (Primary)
+    MEXC_API_KEY: str = os.getenv("MEXC_API_KEY", "")
+    MEXC_SECRET: str = os.getenv("MEXC_SECRET", "")
     
-    # Exchange
-    BINANCE_API_KEY: str = ""
-    BINANCE_SECRET_KEY: str = ""
-    EXECUTION_MODE: Literal["PAPER", "TESTNET", "LIVE"] = "PAPER"
+    # LEGACY BINANCE (For migration reference - can be removed later)
+    BINANCE_API_KEY: str = os.getenv("BINANCE_API_KEY", "")
+    BINANCE_SECRET_KEY: str = os.getenv("BINANCE_SECRET_KEY", "") or os.getenv("BINANCE_SECRET", "")
     
-    # Risk
-    MAX_ORDER_NOTIONAL: float = 100.0  # Safety clamp in USDT
+    # REDIS CONFIGURATION
+    REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379")
+    REDIS_ENABLED: bool = os.getenv("REDIS_ENABLED", "True").lower() == "true"
     
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    # EXECUTION MODE: "PAPER", "TESTNET", "LIVE"
+    EXECUTION_MODE: str = os.getenv("EXECUTION_MODE", "LIVE")
+    
+    # RISK MANAGEMENT
+    MAX_ORDER_NOTIONAL: float = float(os.getenv("MAX_ORDER_NOTIONAL", "50.0"))
+    MIN_SLOT_SIZE: float = float(os.getenv("MIN_SLOT_SIZE", "10.50"))
+    
+    # SYSTEM CONFIG
+    PORT: int = int(os.getenv("PORT", 10000))
+    DIAGNOSTIC_MODE: bool = os.getenv("DIAGNOSTIC_MODE", "True").lower() == "true"
 
 settings = Settings()
+
+# DIRECT EXPORTS (For legacy imports)
+MEXC_API_KEY = settings.MEXC_API_KEY
+MEXC_SECRET = settings.MEXC_SECRET

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VORTEX COMMAND</title>
+    <style>
+        body { background-color: #0d1117; color: #c9d1d9; font-family: 'Courier New', monospace; padding: 20px; }
+        .card { background: #161b22; border: 1px solid #30363d; padding: 15px; margin-bottom: 15px; border-radius: 8px; }
+        .status-live { color: #3fb950; font-weight: bold; }
+        .status-offline { color: #f85149; font-weight: bold; }
+        .metric { font-size: 1.5em; font-weight: bold; color: #ffffff; }
+        .label { font-size: 0.8em; color: #8b949e; }
+        button { width: 100%; padding: 15px; background: #238636; border: none; color: white; border-radius: 6px; font-size: 1em; cursor: pointer; }
+        button:active { opacity: 0.8; }
+    </style>
+</head>
+<body>
+
+    <div class="card" style="text-align: center;">
+        <div class="label">SYSTEM STATUS</div>
+        <div id="sys-status" class="status-offline">CONNECTING...</div>
+    </div>
+
+    <div class="card">
+        <div class="label">WALLET BALANCE</div>
+        <div id="wallet-balance" class="metric">--- USDT</div>
+    </div>
+
+    <div class="card">
+        <div class="label">ACTIVE SLOTS</div>
+        <div id="slots-count" class="metric">--</div>
+    </div>
+
+    <div class="card">
+        <div class="label">LATEST LOGS</div>
+        <div id="logs-area" style="font-size: 0.8em; color: #8b949e;">Waiting for uplink...</div>
+    </div>
+
+    <button onclick="fetchStatus()">🔄 REFRESH HUD</button>
+
+    <script>
+        // POINT THIS TO YOUR RENDER URL
+        const API_URL = "https://pioneer-trader.onrender.com";
+
+        async function fetchStatus() {
+            document.getElementById('sys-status').innerText = "PINGING...";
+            try {
+                const response = await fetch(API_URL + "/");
+                const data = await response.json();
+                
+                document.getElementById('sys-status').innerText = data.status || "UNKNOWN";
+                document.getElementById('sys-status').className = "status-live";
+                document.getElementById('slots-count').innerText = data.active_slots || "2";
+                
+                // For now, we simulate the logs from the / endpoint response if available
+                // In Phase 2, we add a dedicated /status endpoint
+                document.getElementById('logs-area').innerText = "Last Contact: " + new Date().toLocaleTimeString();
+                
+            } catch (error) {
+                document.getElementById('sys-status').innerText = "OFFLINE / SLEEPING";
+                document.getElementById('sys-status').className = "status-offline";
+            }
+        }
+
+        // Auto-refresh every 10 seconds
+        setInterval(fetchStatus, 10000);
+        fetchStatus();
+    </script>
+</body>
+</html>

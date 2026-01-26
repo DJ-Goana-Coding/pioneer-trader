@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VORTEX COMMAND v4.2.1</title>
+    <style>
+        :root { --bg: #050505; --card: #111; --text: #eee; --green: #00ff9d; --red: #ff3b3b; --blue: #00d9ff; }
+        body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid var(--blue); padding-bottom: 10px; }
+        .status-badge { background: #002200; color: var(--green); padding: 5px 12px; border: 1px solid var(--green); border-radius: 4px; font-weight: bold; }
+        .pulse { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+        .card { background: var(--card); padding: 15px; border-radius: 10px; border: 1px solid #222; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .label { font-size: 0.75rem; color: #666; text-transform: uppercase; letter-spacing: 1px; }
+        .value { font-size: 1.5rem; font-weight: bold; display: block; margin-top: 5px; }
+        .profit { color: var(--green); }
+        .section-title { font-size: 0.9rem; color: var(--blue); margin-bottom: 15px; text-transform: uppercase; font-weight: bold; }
+        .log-list { font-size: 0.8rem; }
+        .log-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #1a1a1a; }
+        .buy-signal { color: var(--red); font-weight: bold; }
+        .refresh-btn { width: 100%; background: #1a1a1a; color: var(--blue); border: 1px solid var(--blue); padding: 15px; font-weight: bold; cursor: pointer; border-radius: 5px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <div style="font-size: 1.4rem;">VORTEX <span style="color:var(--blue);">v4.2.1</span></div>
+                <div style="font-size: 0.7rem; color: #555;">SYSTEM: UNLEASHED</div>
+            </div>
+            <div class="status-badge pulse">● ACTIVE</div>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <span class="label">CASH (USDT)</span>
+                <span class="value" id="balance">---</span>
+            </div>
+            <div class="card">
+                <span class="label">NET PROFIT</span>
+                <span class="value profit" id="profit">---</span>
+            </div>
+        </div>
+
+        <div class="card" style="margin-bottom: 20px;">
+            <div class="section-title">PORTFOLIO (COINS HELD)</div>
+            <div id="portfolio-list" style="color: #aaa; line-height: 1.6;">
+                Analyzing Binance Wallet...
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="section-title">LIVE HARVESTER SCANNER</div>
+            <div id="scanner-feed" class="log-list">
+                Connecting to Engine...
+            </div>
+        </div>
+
+        <button class="refresh-btn" onclick="fetchData()">⚡ REFRESH COMMAND CENTER</button>
+    </div>
+
+    <script>
+        const API_URL = "https://pioneer-trader.onrender.com";
+        async function fetchData() {
+            try {
+                const res = await fetch(API_URL);
+                const data = await res.json();
+                document.getElementById('balance').innerText = `$${parseFloat(data.balance).toFixed(2)}`;
+                document.getElementById('profit').innerText = `+$${data.profit_total}`;
+                
+                const port = document.getElementById('portfolio-list');
+                port.innerHTML = Object.keys(data.portfolio).length ? 
+                    Object.entries(data.portfolio).map(([c, a]) => `<b>${c}</b>: ${a}`).join(" | ") : 
+                    "Wallet empty. All funds in USDT.";
+
+                const feed = document.getElementById('scanner-feed');
+                feed.innerHTML = data.strategies.map(s => `
+                    <div class="log-item">
+                        <span>${s.pair}</span>
+                        <span class="${s.rsi < 55 ? 'buy-signal' : ''}">RSI: ${s.rsi}</span>
+                        <span>${s.status}</span>
+                    </div>
+                `).join("");
+            } catch (e) { document.getElementById('balance').innerText = "OFFLINE"; }
+        }
+        fetchData();
+        setInterval(fetchData, 5000);
+    </script>
+</body>
+</html>

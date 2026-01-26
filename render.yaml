@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: pioneer-trader
+    env: python
+    buildCommand: "./build.sh"
+    startCommand: "./start.sh"
+    envVars:
+      - key: MEXC_API_KEY
+        sync: false
+      - key: MEXC_SECRET
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: REDIS_ENABLED
+        value: "True"
+      - key: EXECUTION_MODE
+        value: LIVE
+      - key: PORT
+        value: 10000

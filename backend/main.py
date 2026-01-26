@@ -1,51 +1,39 @@
-from contextlib import asynccontextmanager
+import os
+import asyncio
 from fastapi import FastAPI
-from backend.core.config import settings
-from backend.routers import auth, telemetry, strategy, trade, brain
-from backend.services.exchange import ExchangeService
-from backend.services.oms import OMS
-from backend.services.strategy_engine import StrategyEngine
+from fastapi.middleware.cors import CORSMiddleware
+from backend.services.vortex import VortexEngine
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup
-    print(f"Starting Pioneer-Admiral V1 in {settings.EXECUTION_MODE} mode...")
-    
-    # Initialize Services
-    exchange_service = ExchangeService()
-    await exchange_service.initialize()
-    
-    strategy_engine = StrategyEngine()
-    oms = OMS(exchange_service)
-    
-    # Dependency Injection
-    app.state.exchange_service = exchange_service
-    app.state.strategy_engine = strategy_engine
-    app.state.oms = oms
-    
-    yield
-    
-    # Shutdown
-    print("Shutting down Pioneer-Admiral V1...")
-    await exchange_service.shutdown()
+app = FastAPI()
 
-app = FastAPI(
-    title=settings.PROJECT_NAME,
-    version=settings.VERSION,
-    lifespan=lifespan
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# Include Routers
-app.include_router(auth.router)
-app.include_router(telemetry.router)
-app.include_router(strategy.router)
-app.include_router(trade.router)
-app.include_router(brain.router)
+bot = VortexEngine()
 
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(bot.start_loop())
+
+# FIX: Allow HEAD requests so Render health checks stay green
+@app.head("/")
 @app.get("/")
-async def root():
-    return {"message": "Pioneer-Admiral V1 Online", "mode": settings.EXECUTION_MODE}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
+async def home():
+    try:
+        return {
+            "status": "LIVE",
+            "wallet_balance": f"{bot.wallet_balance:.2f}",
+            "total_equity": f"{bot.total_equity:.2f}",
+            "total_profit": f"{bot.total_profit:.2f}",
+            "active_slots": bot.active_slots,
+            "next_slot_cost": f"{bot.next_slot_price:.2f}",
+            "held_coins": bot.held_coins,
+            "slot_status": bot.slot_status
+        }
+    except Exception as e:
+        return {"status": "ERROR", "message": str(e)}

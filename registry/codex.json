@@ -1,0 +1,47 @@
+{
+  "strategies": [
+    {
+      "id": "trend_ema_01",
+      "name": "The Golden Trend",
+      "family": "trend",
+      "enabled": true,
+      "ingredients": {
+        "signals": [
+          "ema_cross",
+          "rsi_filter"
+        ]
+      },
+      "regimes": [
+        "bull",
+        "trend_up"
+      ]
+    },
+    {
+      "id": "mr_rsi_01",
+      "name": "RSI Reversion Sniper",
+      "family": "mean_reversion",
+      "enabled": true,
+      "ingredients": {
+        "signals": [
+          "rsi_oversold"
+        ]
+      },
+      "regimes": [
+        "range",
+        "chop"
+      ]
+    }
+  ],
+  "engines": [
+    {
+      "id": "eng_vortex_v1",
+      "name": "Vortex 7-Slot Engine"
+    }
+  ],
+  "overlays": [
+    {
+      "id": "ov_risk_01",
+      "name": "Max Drawdown Shield"
+    }
+  ]
+}

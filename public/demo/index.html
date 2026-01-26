@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UI Stencil Pack - Demo</title>
+    <link rel="stylesheet" href="../../src/themes/cyberpunk/theme.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--background-color);
+            color: var(--text-color);
+            padding: var(--spacing-lg);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: var(--spacing-xl);
+            padding: var(--spacing-xl);
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        h1 {
+            font-size: var(--font-size-xl);
+            margin-bottom: var(--spacing-md);
+            color: var(--primary-color);
+        }
+
+        .theme-selector {
+            margin: var(--spacing-lg) 0;
+            display: flex;
+            gap: var(--spacing-sm);
+            justify-content: center;
+        }
+
+        .theme-btn {
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--surface-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: all var(--transition-speed);
+        }
+
+        .theme-btn:hover {
+            background: var(--primary-color);
+            color: var(--background-color);
+        }
+
+        .demo-section {
+            margin-bottom: var(--spacing-xl);
+            padding: var(--spacing-lg);
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+        }
+
+        .demo-section h2 {
+            margin-bottom: var(--spacing-md);
+            color: var(--secondary-color);
+        }
+
+        .dashboard-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--spacing-md);
+        }
+
+        .dashboard-card {
+            padding: var(--spacing-md);
+            background: var(--background-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            text-decoration: none;
+            color: var(--text-color);
+            transition: all var(--transition-speed);
+        }
+
+        .dashboard-card:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+        }
+
+        .dashboard-card h3 {
+            color: var(--primary-color);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: var(--spacing-sm);
+        }
+
+        .status-active {
+            background: var(--success-color);
+        }
+
+        .status-idle {
+            background: var(--warning-color);
+        }
+
+        .code-block {
+            background: var(--background-color);
+            padding: var(--spacing-md);
+            border-radius: var(--border-radius);
+            overflow-x: auto;
+            margin-top: var(--spacing-md);
+        }
+
+        code {
+            font-family: var(--font-family);
+            color: var(--accent-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎨 UI Stencil Pack</h1>
+            <p>A modular, themeable UI component library</p>
+            
+            <div class="theme-selector">
+                <button class="theme-btn" data-theme="cyberpunk">Cyberpunk</button>
+                <button class="theme-btn" data-theme="rainforest">Rainforest</button>
+                <button class="theme-btn" data-theme="terminal">Terminal</button>
+            </div>
+        </header>
+
+        <main>
+            <section class="demo-section">
+                <h2>📊 Dashboards</h2>
+                <div class="dashboard-links">
+                    <a href="../../src/dashboards/trading/index.html" class="dashboard-card">
+                        <h3>Trading</h3>
+                        <p>Market data, positions, and order management</p>
+                        <p><span class="status-indicator status-active"></span>Ready</p>
+                    </a>
+                    <a href="../../src/dashboards/monitoring/index.html" class="dashboard-card">
+                        <h3>Monitoring</h3>
+                        <p>System health, agents, and network activity</p>
+                        <p><span class="status-indicator status-active"></span>Ready</p>
+                    </a>
+                    <a href="../../src/dashboards/governance/index.html" class="dashboard-card">
+                        <h3>Governance</h3>
+                        <p>Proposals, voting, and decision history</p>
+                        <p><span class="status-indicator status-active"></span>Ready</p>
+                    </a>
+                </div>
+            </section>
+
+            <section class="demo-section">
+                <h2>🤖 Agents</h2>
+                <ul>
+                    <li><strong>Scout:</strong> Discovers market opportunities</li>
+                    <li><strong>Hound:</strong> Tracks and pursues targets</li>
+                    <li><strong>Sniper:</strong> Executes precise actions</li>
+                    <li><strong>Stylist:</strong> Manages themes and styling</li>
+                    <li><strong>Cartographer:</strong> Maps data relationships</li>
+                </ul>
+                
+                <div class="code-block">
+                    <code>
+import { ScoutAgent } from './agents/scout/scout.js';<br>
+const scout = new ScoutAgent({ interval: 5000 });<br>
+scout.start();
+                    </code>
+                </div>
+            </section>
+
+            <section class="demo-section">
+                <h2>🔌 Adaptors</h2>
+                <ul>
+                    <li><strong>REST:</strong> HTTP API communication</li>
+                    <li><strong>WebSocket:</strong> Real-time data streaming</li>
+                    <li><strong>Mock:</strong> Test data for development</li>
+                </ul>
+            </section>
+
+            <section class="demo-section">
+                <h2>📈 Metrics</h2>
+                <ul>
+                    <li><strong>Delta Meter:</strong> Tracks changes over time</li>
+                    <li><strong>State Indicators:</strong> Visual state management</li>
+                </ul>
+            </section>
+        </main>
+    </div>
+
+    <script type="module">
+        // Theme switching functionality
+        const themeButtons = document.querySelectorAll('.theme-btn');
+        
+        themeButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const theme = button.dataset.theme;
+                const oldLink = document.querySelector('link[rel="stylesheet"]');
+                const newLink = document.createElement('link');
+                newLink.rel = 'stylesheet';
+                newLink.href = `../../src/themes/${theme}/theme.css`;
+                
+                oldLink.parentNode.replaceChild(newLink, oldLink);
+                
+                console.log(`Theme switched to: ${theme}`);
+            });
+        });
+
+        // Demo initialization
+        console.log('UI Stencil Pack Demo initialized');
+        console.log('Available themes:', ['cyberpunk', 'rainforest', 'terminal']);
+    </script>
+</body>
+</html>

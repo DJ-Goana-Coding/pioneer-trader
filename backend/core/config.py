@@ -29,6 +29,11 @@ class Settings(BaseModel):
     # SYSTEM CONFIG
     PORT: int = int(os.getenv("PORT", 10000))
     DIAGNOSTIC_MODE: bool = os.getenv("DIAGNOSTIC_MODE", "True").lower() == "true"
+    
+    # V19 SECURITY & ARCHIVAL
+    ENABLE_MALWARE_PROTECTION: bool = os.getenv("ENABLE_MALWARE_PROTECTION", "True").lower() == "true"
+    SHADOW_ARCHIVE_PATH: str = os.getenv("SHADOW_ARCHIVE_PATH", "/tmp/shadow_archive")
+    ENABLE_GITHUB_PAGES_EXPORT: bool = os.getenv("ENABLE_GITHUB_PAGES_EXPORT", "False").lower() == "true"
 
 settings = Settings()
 

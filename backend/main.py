@@ -12,6 +12,9 @@ from backend.services.tia_admiral_bridge import tia_admiral_bridge
 from backend.services.garage_manager import garage_manager
 from backend.routers.cockpit import router as cockpit_router
 
+# V19 Security & Archival imports
+from backend.routers.security import router as security_router
+
 logger = setup_logging("backend.main")
 
 app = FastAPI()
@@ -36,6 +39,7 @@ app.state.vortex = bot
 
 # Include routers
 app.include_router(cockpit_router)
+app.include_router(security_router)
 
 @app.on_event("startup")
 async def startup_event():
@@ -44,6 +48,8 @@ async def startup_event():
     logger.info("⚔️ Admiral Engine: ACTIVE")
     logger.info("🌉 T.I.A.-Admiral Bridge: ACTIVE")
     logger.info("🏁 Genesis Garage Manager: ACTIVE")
+    logger.info("🛡️ V19 Security Scanner: ARMED")
+    logger.info("📦 V19 Shadow Archive: ACTIVE")
     asyncio.create_task(bot.start_loop())
 
 # FIX: Allow HEAD requests so Render health checks stay green

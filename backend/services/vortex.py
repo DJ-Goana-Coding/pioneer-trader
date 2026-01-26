@@ -1,5 +1,5 @@
 # ================================================================
-# 💪 VORTEX ENGINE V5.0 - THE MASTER SOVEREIGN
+# 💪 VORTEX ENGINE V5.1 - SOVEREIGN MASTER (STABILIZED)
 # ================================================================
 import os
 import asyncio
@@ -30,10 +30,14 @@ class VortexEngine:
         self.peak_prices = {}
         self.active_slots = 0
         self.is_slot_guarded = False
+        
+        # 🛠️ ATTRIBUTE FIXES: Prevents UI Crashes
         self.next_slot_price = self.min_stake 
+        self.slot_status = []
         
         self._restore_state_from_redis()
         
+        # 🔌 MEXC CONNECTION
         api_key = os.getenv('MEXC_API_KEY')
         secret_key = os.getenv('MEXC_SECRET')
         
@@ -45,9 +49,12 @@ class VortexEngine:
                 'apiKey': api_key,
                 'secret': secret_key,
                 'enableRateLimit': True,
-                'options': { 'defaultType': 'spot', 'createMarketBuyOrderRequiresPrice': False }
+                'options': {
+                    'defaultType': 'spot',
+                    'createMarketBuyOrderRequiresPrice': False
+                }
             })
-            logger.info("⚔️ VORTEX V5.0: MASTER SOVEREIGN Ignition Success")
+            logger.info("⚔️ VORTEX V5.1: SOVEREIGN Ignition Success")
 
     def _restore_state_from_redis(self):
         try:
@@ -55,7 +62,8 @@ class VortexEngine:
             if state:
                 self.peak_prices = redis_cache.get_all_peaks()
                 logger.info(f"🔴 REDIS: Restored {len(self.peak_prices)} peaks")
-        except: pass
+        except:
+            pass
 
     def _persist_state_to_redis(self):
         redis_cache.save_portfolio_state({
@@ -65,6 +73,16 @@ class VortexEngine:
             'active_slots': self.active_slots,
             'held_coins': self.held_coins
         })
+
+    def check_slot_guard(self) -> bool:
+        """Protects capital: Prevents trading if balance < min_stake"""
+        if self.wallet_balance < self.min_stake:
+            if not self.is_slot_guarded:
+                logger.warning(f"🛡️ SLOT GUARD ACTIVATED: ${self.wallet_balance:.2f} < ${self.min_stake}")
+                self.is_slot_guarded = True
+            return True
+        self.is_slot_guarded = False
+        return False
 
     async def fetch_portfolio(self):
         if not self.exchange: return
@@ -89,20 +107,28 @@ class VortexEngine:
             self.active_slots = len(holdings)
             self.total_equity = self.wallet_balance + total_holdings_value
             self.total_profit = self.total_equity - self.starting_capital
+            
+            # 🛠️ UI UPDATE: Populate slot status for Dashboard
+            self.slot_status = [
+                {"coin": k, "value": f"${v['value']:.2f}"} 
+                for k, v in holdings.items()
+            ]
+            
             self._persist_state_to_redis()
         except Exception as e:
             logger.error(f"❌ PORTFOLIO FETCH ERROR: {e}")
 
     async def execute_buy(self, pair: str) -> bool:
-        """HARDENED: Guaranteed 4-point positional handshake"""
+        """SOVEREIGN EXECUTION: Uses placeholder None for positional safety"""
         if not self.exchange: return False
         try:
+            # ARGUMENTS: symbol, type, side, amount, price, params
             order = await self.exchange.create_order(
                 pair,       # 1. symbol
                 'market',   # 2. type
                 'buy',      # 3. side
-                None,       # 4. amount (THE CRITICAL FIX)
-                None,       # 5. price
+                None,       # 4. amount (Hardened placeholder)
+                None,       # 5. price (Optional)
                 {'quoteOrderQty': self.min_stake} # 6. params
             )
             logger.info(f"✅ BUY SUCCESS: {pair} | ID: {order.get('id')}")
@@ -112,17 +138,17 @@ class VortexEngine:
             return False
 
     async def start_loop(self):
-        logger.info("🔍 VORTEX V5.0: SOVEREIGN ACTIVE")
+        logger.info("🔍 VORTEX V5.1: SOVEREIGN MISSION ACTIVE")
         while True:
             try:
                 await self.fetch_portfolio()
                 now = datetime.now().strftime('%H:%M:%S')
                 print(f"--- [VORTEX {now}] Wallet: ${self.wallet_balance:.2f} | Equity: ${self.total_equity:.2f} ---")
 
-                if self.wallet_balance < self.min_stake:
-                    logger.warning("🛡️ SLOT GUARD: Insufficient funds")
+                if self.check_slot_guard():
                     await asyncio.sleep(20); continue
 
+                # SCALPEL SCAN
                 tickers = await self.exchange.fetch_tickers()
                 targets = [
                     t for t in tickers.values() 
@@ -145,3 +171,4 @@ class VortexEngine:
         if self.exchange:
             await self.exchange.close()
             logger.info("🔌 VORTEX: Connection closed")
+        

@@ -1,5 +1,5 @@
 # ================================================================
-# 💪 VORTEX V6.1 - THE CHAMELEON (SCOUT & SOLDIER LOGIC)
+# 💪 VORTEX V6.2 - THE SOVEREIGN SCALPER (2S BEAT + SCOUT/SOLDIER)
 # ================================================================
 import os, asyncio, ccxt.async_support as ccxt
 from datetime import datetime
@@ -9,15 +9,15 @@ logger = setup_logging("vortex")
 
 class VortexEngine:
     def __init__(self):
-        self.scout_stake = 3.50    # First attempt
-        self.soldier_stake = 5.00  # Second attempt if $3.5 failed
-        self.initial_slots = 100   # Maximized for high-frequency
+        self.scout_stake = 3.50    
+        self.soldier_stake = 5.00  
+        self.initial_slots = 100   
         self.aggression = 10       
         
         self.wallet_balance = 0.0
         self.held_coins = {}
         self.futures_positions = []
-        self.last_trades = []      # For the Citadel UI Rolling Feed
+        self.last_trades = []      
 
         self.exchange = None
         self._init_exchange()
@@ -26,7 +26,7 @@ class VortexEngine:
         keys = {'apiKey': os.getenv('MEXC_API_KEY'), 'secret': os.getenv('MEXC_SECRET')}
         if keys['apiKey']:
             self.exchange = ccxt.mexc({**keys, 'enableRateLimit': True, 'options': {'defaultType': 'spot'}})
-            logger.info("⚔️ V6.1 CHAMELEON: 2s Scout/Soldier Engaged")
+            logger.info("⚔️ V6.2 SOVEREIGN: 2s Scout/Soldier Engaged")
 
     def _safe_float(self, val):
         try: return float(val) if val is not None else 0.0
@@ -38,7 +38,7 @@ class VortexEngine:
             balance = await self.exchange.fetch_balance()
             self.wallet_balance = self._safe_float(balance['total'].get('USDT', 0))
             
-            # Silent Shadow Feed for Futures (No Warnings)
+            # Silent Watch for the BTC 60x Long
             try:
                 pos = await self.exchange.fetch_positions(params={'type': 'swap'})
                 self.futures_positions = [p for p in pos if self._safe_float(p.get('contracts', 0)) > 0]
@@ -50,27 +50,21 @@ class VortexEngine:
         except Exception as e: logger.debug(f"Sync: {e}")
 
     async def execute_chameleon_buy(self, pair: str):
-        """🎯 Attempts $3.50 scout buy, pivots to $5.00 soldier if needed"""
         try:
-            # Attempt 1: The Scout ($3.50)
+            # Attempt 1: Scout ($3.50)
             await self.exchange.create_order(pair, 'market', 'buy', None, None, {'quoteOrderQty': self.scout_stake})
-            msg = f"🏃 SCOUT BUY: {pair} ($3.50)"
-            logger.info(msg)
-            self._log_trade(msg)
+            self._log_trade(f"🏃 SCOUT BUY: {pair} ($3.50)")
         except Exception as e:
             if "minimum" in str(e).lower() or "notional" in str(e).lower():
                 try:
-                    # Attempt 2: The Soldier ($5.00)
+                    # Attempt 2: Soldier ($5.00)
                     await self.exchange.create_order(pair, 'market', 'buy', None, None, {'quoteOrderQty': self.soldier_stake})
-                    msg = f"🛡️ SOLDIER BUY: {pair} ($5.00)"
-                    logger.info(msg)
-                    self._log_trade(msg)
+                    self._log_trade(f"🛡️ SOLDIER BUY: {pair} ($5.00)")
                 except: pass
-            else:
-                logger.debug(f"Buy Skip: {e}")
 
     def _log_trade(self, msg):
         now = datetime.now().strftime("%H:%M:%S")
+        logger.info(msg)
         self.last_trades.insert(0, f"[{now}] {msg}")
         self.last_trades = self.last_trades[:8]
 
@@ -80,16 +74,12 @@ class VortexEngine:
                 await self.fetch_portfolio()
                 if self.wallet_balance >= self.scout_stake and len(self.held_coins) < self.initial_slots:
                     tickers = await self.exchange.fetch_tickers()
-                    # High-Volume aggression targets
                     targets = [t for t in tickers.values() if t['symbol'].endswith('/USDT') and t.get('quoteVolume', 0) > 8000000]
                     for t in targets[:self.aggression]:
                         if t['symbol'].split('/')[0] not in self.held_coins:
                             await self.execute_chameleon_buy(t['symbol'])
-                            break # One buy per beat to avoid rate limits
-                await asyncio.sleep(2) # ⚡ 2 SECOND MACHINE GUN FIRE
+                            break 
+                await asyncio.sleep(2) # ⚡ 2 SECOND HEARTBEAT
             except Exception as e:
                 await asyncio.sleep(2)
-
-    async def shutdown(self):
-        if self.exchange: await self.exchange.close()
-                
+                    

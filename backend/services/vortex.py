@@ -1,174 +1,79 @@
-# ================================================================
-# 💪 VORTEX ENGINE V5.1 - SOVEREIGN MASTER (STABILIZED)
-# ================================================================
-import os
-import asyncio
-import ccxt.async_support as ccxt
+import streamlit as st
+import pandas as pd
+import time
 from datetime import datetime
-from dotenv import load_dotenv
-from backend.core.logging_config import setup_logging
-from backend.services.redis_cache import redis_cache
 
-load_dotenv()
-logger = setup_logging("vortex")
+# --- CONFIGURATION & AGGRESSION ---
+STAKE_MIN = 5.00
+BOT_ALLOWANCE_LIMIT = 50.00  # Hard capped start
+# Total Scalpers = (Garage Bays * Slots) = (4 * 45) = 180 Scalpers available
 
-class VortexEngine:
-    EXCLUDED_COINS = ['USDT', 'USDC', 'BUSD', 'DAI', 'TUSD', 'MX']
+# --- STYLING: THE "OVERKILL" TERMINAL ---
+st.markdown("""
+    <style>
+    .trade-row { font-family: 'Courier New', monospace; font-size: 14px; padding: 4px; border-bottom: 1px solid #333; }
+    .ball { height: 12px; width: 12px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+    .green-ball { background-color: #00ff00; box-shadow: 0 0 10px #00ff00; }
+    .red-ball { background-color: #ff0000; box-shadow: 0 0 10px #ff0000; }
+    .yellow-ball { background-color: #ffff00; box-shadow: 0 0 10px #ffff00; }
+    .white-ball { background-color: #ffffff; }
+    .profit { color: #00ff00; font-weight: bold; }
+    .loss { color: #ff0000; font-weight: bold; }
+    .neutral { color: #ffff00; }
+    </style>
+""", unsafe_allow_html=True)
+
+# --- SOVEREIGN CAPITAL MONITOR ---
+st.title("🏰 FRANKFURT CITADEL | V19-G")
+col_a, col_b, col_c = st.columns(3)
+
+with col_a:
+    st.metric("TOTAL WALLET", "$80.25", delta="+$1.12")
+with col_b:
+    st.metric("BOT ALLOWANCE", f"${BOT_ALLOWANCE_LIMIT:.2f}", delta="- Hard Capped")
+with col_c:
+    st.metric("ACTIVE SCALPERS", "180", delta="Aggression: 10/10", delta_color="inverse")
+
+st.divider()
+
+# --- THE ROLLING TRADE FEED (5-8 LINES) ---
+st.subheader("📡 LIVE VORTEX STREAM")
+
+# Mock data for demonstration - in production, this pulls from st.session_state.live_trades
+trades = [
+    {"type": "sell", "coin": "SOL", "qty": "0.12", "price": "145.20", "pl": "+$2.40", "status": "green"},
+    {"type": "buy", "coin": "AVAX", "qty": "1.50", "price": "34.10", "pl": "---", "status": "yellow"},
+    {"type": "sell", "coin": "PEPE", "qty": "1.2M", "price": "0.00001", "pl": "-$0.50", "status": "red"},
+    {"type": "hold", "coin": "SUI", "qty": "10.0", "price": "1.12", "pl": "+$0.02", "status": "white"},
+    {"type": "buy", "coin": "HBAR", "qty": "100.0", "price": "0.07", "pl": "---", "status": "yellow"},
+]
+
+for t in trades:
+    ball_class = f"{t['status']}-ball"
+    pl_class = "profit" if "+" in t['pl'] else ("loss" if "-" in t['pl'] else "neutral")
     
-    def __init__(self):
-        # 🎯 SLOT CONFIGURATION
-        self.starting_capital = 94.50
-        self.min_stake = 10.50
-        self.min_trade_floor = 5.50
-        self.initial_slots = 15
-        
-        # 📊 STATE TRACKING
-        self.wallet_balance = 0.0
-        self.total_equity = 0.0
-        self.total_profit = 0.0
-        self.held_coins = {}
-        self.peak_prices = {}
-        self.active_slots = 0
-        self.is_slot_guarded = False
-        
-        # 🛠️ ATTRIBUTE FIXES: Prevents UI Crashes
-        self.next_slot_price = self.min_stake 
-        self.slot_status = []
-        
-        self._restore_state_from_redis()
-        
-        # 🔌 MEXC CONNECTION
-        api_key = os.getenv('MEXC_API_KEY')
-        secret_key = os.getenv('MEXC_SECRET')
-        
-        if not api_key or not secret_key:
-            logger.warning("⚠️ VORTEX: Keys missing, running in BLIND MODE")
-            self.exchange = None
-        else:
-            self.exchange = ccxt.mexc({
-                'apiKey': api_key,
-                'secret': secret_key,
-                'enableRateLimit': True,
-                'options': {
-                    'defaultType': 'spot',
-                    'createMarketBuyOrderRequiresPrice': False
-                }
-            })
-            logger.info("⚔️ VORTEX V5.1: SOVEREIGN Ignition Success")
+    st.markdown(f"""
+        <div class="trade-row">
+            <span class="ball {ball_class}"></span>
+            <b>{t['coin']}</b> | {t['type'].upper()} | Qty: {t['qty']} | Price: ${t['price']} | 
+            <span class="{pl_class}">P/L: {t['pl']}</span>
+        </div>
+    """, unsafe_allow_html=True)
 
-    def _restore_state_from_redis(self):
-        try:
-            state = redis_cache.get_portfolio_state()
-            if state:
-                self.peak_prices = redis_cache.get_all_peaks()
-                logger.info(f"🔴 REDIS: Restored {len(self.peak_prices)} peaks")
-        except:
-            pass
+st.divider()
 
-    def _persist_state_to_redis(self):
-        redis_cache.save_portfolio_state({
-            'wallet_balance': self.wallet_balance,
-            'total_equity': self.total_equity,
-            'total_profit': self.total_profit,
-            'active_slots': self.active_slots,
-            'held_coins': self.held_coins
-        })
+# --- ACTIVE SLOTS MONITOR ---
+st.subheader("🎰 ENGINE BAYS: 45 SLOTS")
+slot_data = {
+    "Slot #": range(1, 7),
+    "Coin": ["SOL", "AVAX", "SUI", "PEPE", "HBAR", "WLFI"],
+    "Buy Price": ["$142.80", "$34.10", "$1.10", "$0.00001", "$0.07", "$0.50"],
+    "Current": ["$145.20", "$34.05", "$1.12", "$0.000009", "$0.07", "$0.50"],
+    "Trend": ["🟢 +1.6%", "🟡 -0.1%", "🟢 +1.8%", "🔴 -10%", "⚪ 0.0%", "⚪ 0.0%"]
+}
+st.table(pd.DataFrame(slot_data))
 
-    def check_slot_guard(self) -> bool:
-        """Protects capital: Prevents trading if balance < min_stake"""
-        if self.wallet_balance < self.min_stake:
-            if not self.is_slot_guarded:
-                logger.warning(f"🛡️ SLOT GUARD ACTIVATED: ${self.wallet_balance:.2f} < ${self.min_stake}")
-                self.is_slot_guarded = True
-            return True
-        self.is_slot_guarded = False
-        return False
-
-    async def fetch_portfolio(self):
-        if not self.exchange: return
-        try:
-            balance = await self.exchange.fetch_balance()
-            self.wallet_balance = balance['total'].get('USDT', 0)
-            tickers = await self.exchange.fetch_tickers()
-            holdings = {}
-            total_holdings_value = 0.0
-            
-            for coin, amount in balance['total'].items():
-                if amount > 0 and coin not in self.EXCLUDED_COINS:
-                    pair = f"{coin}/USDT"
-                    if pair in tickers:
-                        price = tickers[pair]['last']
-                        val = amount * price
-                        if val > 1.0:
-                            holdings[coin] = {'amount': round(amount, 6), 'value': round(val, 2), 'price': price}
-                            total_holdings_value += val
-            
-            self.held_coins = holdings
-            self.active_slots = len(holdings)
-            self.total_equity = self.wallet_balance + total_holdings_value
-            self.total_profit = self.total_equity - self.starting_capital
-            
-            # 🛠️ UI UPDATE: Populate slot status for Dashboard
-            self.slot_status = [
-                {"coin": k, "value": f"${v['value']:.2f}"} 
-                for k, v in holdings.items()
-            ]
-            
-            self._persist_state_to_redis()
-        except Exception as e:
-            logger.error(f"❌ PORTFOLIO FETCH ERROR: {e}")
-
-    async def execute_buy(self, pair: str) -> bool:
-        """SOVEREIGN EXECUTION: Uses placeholder None for positional safety"""
-        if not self.exchange: return False
-        try:
-            # ARGUMENTS: symbol, type, side, amount, price, params
-            order = await self.exchange.create_order(
-                pair,       # 1. symbol
-                'market',   # 2. type
-                'buy',      # 3. side
-                None,       # 4. amount (Hardened placeholder)
-                None,       # 5. price (Optional)
-                {'quoteOrderQty': self.min_stake} # 6. params
-            )
-            logger.info(f"✅ BUY SUCCESS: {pair} | ID: {order.get('id')}")
-            return True
-        except Exception as e:
-            logger.error(f"❌ BUY FAILED: {pair} | REASON: {e}")
-            return False
-
-    async def start_loop(self):
-        logger.info("🔍 VORTEX V5.1: SOVEREIGN MISSION ACTIVE")
-        while True:
-            try:
-                await self.fetch_portfolio()
-                now = datetime.now().strftime('%H:%M:%S')
-                print(f"--- [VORTEX {now}] Wallet: ${self.wallet_balance:.2f} | Equity: ${self.total_equity:.2f} ---")
-
-                if self.check_slot_guard():
-                    await asyncio.sleep(20); continue
-
-                # SCALPEL SCAN
-                tickers = await self.exchange.fetch_tickers()
-                targets = [
-                    t for t in tickers.values() 
-                    if t['symbol'].endswith('/USDT') 
-                    and t.get('quoteVolume', 0) > 10000000
-                    and t['symbol'].split('/')[0] not in self.held_coins
-                    and t['symbol'].split('/')[0] not in self.EXCLUDED_COINS
-                ][:5]
-
-                for t in targets:
-                    if self.wallet_balance < self.min_stake: break
-                    await self.execute_buy(t['symbol'])
-                
-                await asyncio.sleep(20)
-            except Exception as e:
-                logger.error(f"⚠️ MAIN ERROR: {e}")
-                await asyncio.sleep(20)
-
-    async def shutdown(self):
-        if self.exchange:
-            await self.exchange.close()
-            logger.info("🔌 VORTEX: Connection closed")
-        
+# --- AGGRESSION CONTROL ---
+if st.sidebar.button("🔥 RELEASE ALL SCALPERS (10/10)"):
+    st.sidebar.error("SYSTEM BREACH: MAXIMUM AGGRESSION ENGAGED")
+    # Trigger your Airgap/Firestone override here

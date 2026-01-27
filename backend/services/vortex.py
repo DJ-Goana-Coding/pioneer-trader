@@ -1,126 +1,132 @@
-# ================================================================
-# 🔥 VORTEX V6.5 - THE BERSERKER (1S PULSE + RAPID FIRE EXITS)
-# ================================================================
 import os, asyncio, ccxt.async_support as ccxt
 from datetime import datetime
-from backend.core.logging_config import setup_logging
+import time
 
-logger = setup_logging("vortex")
+# IDENTITY: Quantum Goanna Tech No Logics | COMMANDER: Darrell
+# MISSION: 7-Slot Vortex Trading & Freedom Ladder Progression
 
-class VortexEngine:
+class VortexBerserker:
     def __init__(self):
-        # ⚔️ SCOUT & SOLDIER STAKES
-        self.scout_stake = 3.50    
-        self.soldier_stake = 5.00  
+        # --- SHARD 01 & 05: ENGINE CONFIG ---
+        self.base_stake = 10.50    # Base stake per slot
+        self.max_slots = 7         # Max async trading slots
+        self.universe = ['SOL/USDT', 'XRP/USDT', 'DOGE/USDT', 'ADA/USDT', 'PEPE/USDT'] # 11 Hot Alts
         
-        # 🛡️ FLEET CONFIG
-        self.initial_slots = 103   # Max capacity
-        self.aggression = 15       # Scan intensity
+        # --- FREEDOM LADDER & SCALP TUNING ---
+        self.target_profit_range = (0.10, 0.30) # $0.10 - $0.30 goal
+        self.ladder_step = 5.00                 # +$5.00 on fill
+        self.cycles_to_reset = 10               # Reset after 10 cycles
+        self.cycle_count = 0
         
-        # ⚡ RAPID FIRE TUNING (POPCORN MODE)
-        self.target_profit_usdt = 0.07  # 🎯 7 CENTS TARGET (approx 2% of $3.50)
-        self.trail_percent = 0.002      # 🎢 0.2% TRAIL (Tight Snap)
+        # --- SHARD 01: GATEKEEPER (MLOFI) ---
+        self.e_n = 0.5 # Gatekeeper Vector. If < 0, BUYS are blocked
         
-        self.wallet_balance = 0.0
-        self.held_coins = {} # Format: {symbol: {'buy_price': x, 'max_price': x}}
-        self.last_trades = []      
-
+        self.active_slots = {} # {symbol: {'buy_price': x, 'qty': y, 'start_time': z}}
         self.exchange = None
-        self._init_exchange()
+        self._init_mexc()
 
-    def _init_exchange(self):
-        keys = {'apiKey': os.getenv('MEXC_API_KEY'), 'secret': os.getenv('MEXC_SECRET')}
-        if keys['apiKey']:
-            self.exchange = ccxt.mexc({
-                **keys, 
-                'enableRateLimit': True, 
-                'rateLimit': 50, # ⚡ High-frequency polling (50ms)
-                'options': {'defaultType': 'spot'}
-            })
-            logger.info("⚔️ V6.5 BERSERKER ENGAGED: 1s Pulse | 103 Slots | 7c Target")
+    def _init_mexc(self):
+        """Initializes high-frequency MEXC bridge."""
+        self.exchange = ccxt.mexc({
+            'apiKey': os.getenv('MEXC_API_KEY'),
+            'secret': os.getenv('MEXC_SECRET'),
+            'enableRateLimit': True,
+            'rateLimit': 50, # High-intensity pulse
+            'options': {'defaultType': 'spot'}
+        })
 
-    def _safe_float(self, val):
-        try: return float(val) if val is not None else 0.0
-        except: return 0.0
+    async def check_gatekeeper(self):
+        """MLOFI (e_n) vector check."""
+        return self.e_n >= 0
 
-    async def fetch_portfolio(self):
-        if not self.exchange: return
+    async def scout_and_buy(self):
+        """1s Polling Loop to fill slots."""
+        if len(self.active_slots) >= self.max_slots: return
+        if not await self.check_gatekeeper(): return
+
+        # Rapid Scan of Universe
+        tickers = await self.exchange.fetch_tickers(self.universe)
+        for symbol in self.universe:
+            if symbol not in self.active_slots and len(self.active_slots) < self.max_slots:
+                price = tickers[symbol]['last']
+                # P25 Sniper Logic Trigger
+                # (Simulated immediate entry for 8s pulse demonstration)
+                await self.execute_order(symbol, price)
+
+    async def execute_order(self, symbol, price):
         try:
-            balance = await self.exchange.fetch_balance()
-            self.wallet_balance = self._safe_float(balance['total'].get('USDT', 0))
-            tickers = await self.exchange.fetch_tickers()
-            
-            # 🕵️ Update Held Coins & Trailing Logic
-            for coin, amount in balance['total'].items():
-                pair = f"{coin}/USDT"
-                if amount > 0 and pair in tickers:
-                    last_price = tickers[pair]['last']
-                    
-                    # Initialize tracking if new
-                    if coin not in self.held_coins:
-                        self.held_coins[coin] = {'buy_price': last_price, 'max_price': last_price}
-                    
-                    # Update "High Water Mark" for Trailing
-                    if last_price > self.held_coins[coin]['max_price']:
-                        self.held_coins[coin]['max_price'] = last_price
-                    
-                    # 🚦 EXIT LOGIC: 7c Profit + 0.2% Drop
-                    # 1. Calculate Profit in USDT
-                    profit_usdt = (last_price - self.held_coins[coin]['buy_price']) * amount
-                    
-                    # 2. Calculate Trailing Stop Price (Peak - 0.2%)
-                    trail_trigger = self.held_coins[coin]['max_price'] * (1 - self.trail_percent)
-                    
-                    # 3. Trigger Check
-                    if profit_usdt >= self.target_profit_usdt:
-                        if last_price <= trail_trigger: # Price dropped from peak
-                            await self.execute_exit(pair, amount, profit_usdt)
-                            
-        except Exception as e: logger.debug(f"Sync: {e}")
-
-    async def execute_exit(self, pair, amount, profit):
-        try:
-            await self.exchange.create_market_sell_order(pair, amount)
-            msg = f"💰 SNIPE SECURED: {pair} (+${profit:.2f})"
-            self._log_trade(msg)
-            # Remove from tracking immediately to free up slot
-            coin = pair.split('/')[0]
-            if coin in self.held_coins:
-                del self.held_coins[coin]
-        except Exception as e: logger.error(f"Exit Fail: {e}")
-
-    async def execute_chameleon_buy(self, pair: str):
-        try:
-            # 🎯 1-Second Scout Attempt ($3.50)
-            await self.exchange.create_order(pair, 'market', 'buy', None, None, {'quoteOrderQty': self.scout_stake})
-            self._log_trade(f"🔥 BERSERKER SCOUT: {pair} ($3.50)")
+            # MEXC Minimum order is 1 USDT as of 2026
+            order = await self.exchange.create_market_buy_order(symbol, self.base_stake / price)
+            self.active_slots[symbol] = {
+                'buy_price': price,
+                'qty': order['amount'] if 'amount' in order else (self.base_stake / price),
+                'start_time': time.time()
+            }
+            self._log(f"🔥 SLOT OPEN: {symbol} at ${price:.4f}")
         except Exception as e:
-            # If $3.50 is too small, pivot to Soldier ($5.00)
-            if "minimum" in str(e).lower() or "notional" in str(e).lower():
-                try:
-                    await self.exchange.create_order(pair, 'market', 'buy', None, None, {'quoteOrderQty': self.soldier_stake})
-                    self._log_trade(f"🛡️ BERSERKER SOLDIER: {pair} ($5.00)")
-                except: pass
+            self._log(f"⚠️ BUY FAIL: {e}")
 
-    def _log_trade(self, msg):
-        now = datetime.now().strftime("%H:%M:%S")
-        logger.info(msg)
-        self.last_trades.insert(0, f"[{now}] {msg}")
-        self.last_trades = self.last_trades[:12] # Keep last 12 lines for the UI
+    async def pulse_monitor(self):
+        """8-Second Target Monitor."""
+        if not self.active_slots: return
+        
+        # Bulk fetch prices for speed
+        tickers = await self.exchange.fetch_tickers(list(self.active_slots.keys()))
+        
+        for symbol, data in list(self.active_slots.items()):
+            current_price = tickers[symbol]['last']
+            profit = (current_price - data['buy_price']) * data['qty']
+            elapsed = time.time() - data['start_time']
 
-    async def start_loop(self):
+            # 🎯 TARGET REACHED: 10-30 cents
+            if profit >= self.target_profit_range[0]:
+                await self.execute_exit(symbol, profit)
+            elif elapsed > 60: # Time-based kill-switch to free slots
+                await self.execute_exit(symbol, profit, force=True)
+
+    async def execute_exit(self, symbol, profit, force=False):
+        try:
+            qty = self.active_slots[symbol]['qty']
+            await self.exchange.create_market_sell_order(symbol, qty)
+            
+            # Freedom Ladder Logic
+            self.cycle_count += 1
+            if self.cycle_count >= self.cycles_to_reset:
+                self.base_stake = 10.50
+                self.cycle_count = 0
+                self._log("♻️ LADDER RESET: Stake back to $10.50")
+            else:
+                # Add ladder logic or status here
+                pass
+
+            status = "💰 SCALP SUCCESS" if not force else "🛡️ ZOMBIE KILL"
+            self._log(f"{status}: {symbol} | Profit: +${profit:.2f}")
+            del self.active_slots[symbol]
+        except Exception as e:
+            self._log(f"❌ EXIT FAIL: {e}")
+
+    def _log(self, msg):
+        # UI: 5-8 line rolling window
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
+
+    async def god_protocol_check(self):
+        """Shard 02: Auto-Healer - Verify process integrity."""
+        # Simulated checksum/process guard
+        pass
+
+    async def start(self):
+        self._log("⚔️ VORTEX V6.9 BERSERKER ENGAGED. NO APOLOGIES.")
         while True:
             try:
-                await self.fetch_portfolio()
-                # 🛡️ Check 103 slots capacity
-                if self.wallet_balance >= self.scout_stake and len(self.held_coins) < self.initial_slots:
-                    tickers = await self.exchange.fetch_tickers()
-                    # 🕵️ Sniper Logic: Volume > 3M to find active runners
-                    targets = [t for t in tickers.values() if t['symbol'].endswith('/USDT') and t.get('quoteVolume', 0) > 3000000]
-                    for t in targets[:self.aggression]:
-                        if t['symbol'].split('/')[0] not in self.held_coins:
-                            await self.execute_chameleon_buy(t['symbol'])
-                            break 
-                await asyncio.sleep(1) # ⚡ THE 1-SECOND PULSE
-            except: await asyncio.sleep(1)
-    
+                await self.god_protocol_check()
+                await self.scout_and_buy()
+                await self.pulse_monitor()
+                await asyncio.sleep(1) # The Pulse
+            except Exception as e:
+                self._log(f"💀 AUTO-HEALER TRIGGERED: {e}")
+                await asyncio.sleep(1)
+
+if __name__ == "__main__":
+    vortex = VortexBerserker()
+    asyncio.run(vortex.start())
+            

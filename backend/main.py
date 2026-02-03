@@ -10,6 +10,26 @@ from backend.services.malware_protection import scanner
 from backend.services.archival import archival_service
 from backend.services.vortex import VortexBerserker
 
+def is_placeholder_credential(value: str) -> bool:
+    """
+    Check if a credential value appears to be a placeholder.
+    
+    Args:
+        value: The credential value to check
+        
+    Returns:
+        True if value is a placeholder, False if it appears to be a real credential
+    """
+    if not value:
+        return True
+    if "PLACEHOLDER" in value.upper():
+        return True
+    if "YOUR_" in value.upper():
+        return True
+    if len(value) < 16:  # Real API keys are typically longer
+        return True
+    return False
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
@@ -21,13 +41,13 @@ async def lifespan(app: FastAPI):
     if settings.EXECUTION_MODE in ["LIVE", "TESTNET"]:
         security_warnings = []
         
-        if not settings.MEXC_API_KEY or "PLACEHOLDER" in settings.MEXC_API_KEY.upper():
+        if is_placeholder_credential(settings.MEXC_API_KEY):
             security_warnings.append("❌ MEXC_API_KEY is not configured or contains PLACEHOLDER")
         
-        if not settings.MEXC_SECRET_KEY or "PLACEHOLDER" in settings.MEXC_SECRET_KEY.upper():
+        if is_placeholder_credential(settings.MEXC_SECRET_KEY):
             security_warnings.append("❌ MEXC_SECRET_KEY is not configured or contains PLACEHOLDER")
         
-        if "YOUR_" in settings.SECRET_KEY.upper() or len(settings.SECRET_KEY) < 32:
+        if is_placeholder_credential(settings.SECRET_KEY) or len(settings.SECRET_KEY) < 32:
             security_warnings.append("❌ SECRET_KEY is weak or contains placeholder text")
         
         if security_warnings:

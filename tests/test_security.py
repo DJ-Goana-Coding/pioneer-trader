@@ -10,6 +10,20 @@ import sys
 # Add the project root to the path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+def check_placeholder(value):
+    """
+    Check if a value contains placeholder text.
+    
+    This function matches the logic in backend/main.py:is_placeholder_credential()
+    """
+    if not value or "PLACEHOLDER" in value.upper():
+        return True
+    if "YOUR_" in value.upper():
+        return True
+    if len(value) < 16:  # Real API keys are typically longer
+        return True
+    return False
+
 def test_placeholder_rejection():
     """Test that LIVE mode rejects placeholder credentials"""
     
@@ -20,20 +34,15 @@ def test_placeholder_rejection():
     # Test 1: Check security validation logic
     print("\n✅ Test 1: Security validation logic")
     
-    def check_placeholder(value):
-        """Check if a value contains placeholder text"""
-        if not value or "PLACEHOLDER" in value.upper():
-            return True
-        if "YOUR_" in value.upper():
-            return True
-        return False
-    
     test_cases = [
         ("PLACEHOLDER_KEY", True, "literal PLACEHOLDER"),
-        ("my_real_key_123", False, "real-looking key"),
+        ("mx0vglABCDEF1234567890ABCDEF", False, "real API key format (28+ chars)"),
         ("YOUR_KEY_HERE", True, "YOUR_ prefix"),
+        ("short", True, "too short (< 16 chars)"),
         ("", True, "empty string"),
         (None, True, "None value"),
+        ("a1b2c3d4e5f6g7h8i9j0k1l2m3n4", False, "legitimate 32-char key"),
+        ("ghp_1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef", False, "GitHub PAT format"),
     ]
     
     all_passed = True
@@ -42,7 +51,7 @@ def test_placeholder_rejection():
         status = "✓" if result == should_fail else "✗"
         if result != should_fail:
             all_passed = False
-        print(f"   {status} {description}: {value} -> reject={result}")
+        print(f"   {status} {description}: {repr(value)} -> reject={result}")
     
     if not all_passed:
         print("   Status: ✗ Some validation tests failed")
@@ -66,6 +75,28 @@ def test_placeholder_rejection():
     else:
         print("   ✗ FAILED - Did not detect placeholder")
         return False
+    
+    # Test 3: Verify legitimate keys pass validation
+    print("\n✅ Test 3: Legitimate credential acceptance")
+    
+    legitimate_keys = [
+        "mx0vglABCDEF1234567890ABCDEF1234",  # MEXC format
+        "ghp_1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef",  # GitHub PAT
+        "sk-1234567890abcdefghijklmnopqrstuvwxyz",  # Generic API key format
+    ]
+    
+    all_accepted = True
+    for key in legitimate_keys:
+        rejected = check_placeholder(key)
+        status = "✓" if not rejected else "✗"
+        if rejected:
+            all_accepted = False
+        print(f"   {status} Accepts key format (len={len(key)}): {key[:20]}...")
+    
+    if not all_accepted:
+        print("   Status: ✗ Some legitimate keys were rejected")
+        return False
+    print("   Status: ✓ All legitimate key formats accepted")
     
     print("\n" + "=" * 80)
     print("ALL SECURITY VALIDATION TESTS PASSED ✅")

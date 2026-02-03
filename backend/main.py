@@ -1,13 +1,14 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from backend.core.config import settings
-from backend.routers import auth, telemetry, strategy, trade, brain
+from backend.routers import auth, telemetry, strategy, trade, brain, vortex
 from backend.services.exchange import ExchangeService
 from backend.services.oms import OMS
 from backend.services.strategy_engine import StrategyEngine
 from backend.services.swarm import SwarmController
 from backend.services.malware_protection import scanner
 from backend.services.archival import archival_service
+from backend.services.vortex import VortexBerserker
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -32,6 +33,11 @@ async def lifespan(app: FastAPI):
     # Initialize archival
     print(f"📦 Shadow Archive: {settings.SHADOW_ARCHIVE_PATH}")
     
+    # Initialize Vortex Berserker Engine
+    vortex_engine = VortexBerserker()
+    await vortex_engine.initialize()
+    print(f"🔥 Vortex Berserker: Initialized (Stake=${settings.VORTEX_STAKE_USDT}, Stop-Loss={settings.VORTEX_STOP_LOSS_PCT*100}%)")
+    
     # Dependency Injection
     app.state.exchange_service = exchange_service
     app.state.strategy_engine = strategy_engine
@@ -39,11 +45,13 @@ async def lifespan(app: FastAPI):
     app.state.swarm = swarm
     app.state.scanner = scanner
     app.state.archival = archival_service
+    app.state.vortex = vortex_engine
     
     yield
     
     # Shutdown
     print("Shutting down Pioneer-Admiral V1...")
+    await vortex_engine.shutdown()
     await exchange_service.shutdown()
     await swarm.shutdown()
 
@@ -59,6 +67,7 @@ app.include_router(telemetry.router)
 app.include_router(strategy.router)
 app.include_router(trade.router)
 app.include_router(brain.router)
+app.include_router(vortex.router)
 
 @app.get("/")
 async def root():

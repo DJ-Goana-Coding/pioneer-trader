@@ -7,17 +7,24 @@ class Settings(BaseSettings):
     VERSION: str = "1.0.0"
     
     # Security
-    SECRET_KEY: str
+    SECRET_KEY: str = "CHANGE_ME_IN_PRODUCTION_USE_OPENSSL_RAND_HEX_32"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
     # Exchange
     BINANCE_API_KEY: str = ""
     BINANCE_SECRET_KEY: str = ""
+    MEXC_API_KEY: str = ""
+    MEXC_SECRET_KEY: str = ""
     EXECUTION_MODE: Literal["PAPER", "TESTNET", "LIVE"] = "PAPER"
     
     # Risk
     MAX_ORDER_NOTIONAL: float = 100.0  # Safety clamp in USDT
+    
+    # Vortex Engine Configuration
+    VORTEX_STAKE_USDT: float = 8.0  # Commander's mandate: 8 USDT per trade
+    VORTEX_STOP_LOSS_PCT: float = 0.015  # 1.5% ejector seat
+    VORTEX_PULSE_SECONDS: int = 8  # 8-second trading pulse
     
     # V19 Fleet Configuration
     UI_THEME: Literal["OVERKILL", "ZEN"] = "OVERKILL"

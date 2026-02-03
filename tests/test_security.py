@@ -10,17 +10,21 @@ import sys
 # Add the project root to the path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Import security constants
+from backend.core.security_constants import MIN_API_KEY_LENGTH, MIN_SECRET_KEY_LENGTH
+
 def check_placeholder(value):
     """
     Check if a value contains placeholder text.
     
     This function matches the logic in backend/main.py:is_placeholder_credential()
+    Uses MIN_API_KEY_LENGTH constant to ensure consistency.
     """
     if not value or "PLACEHOLDER" in value.upper():
         return True
     if "YOUR_" in value.upper():
         return True
-    if len(value) < 16:  # Real API keys are typically longer
+    if len(value) < MIN_API_KEY_LENGTH:  # Shared constant from security_constants.py
         return True
     return False
 
@@ -30,6 +34,8 @@ def test_placeholder_rejection():
     print("=" * 80)
     print("SECURITY VALIDATION TEST")
     print("=" * 80)
+    print(f"Using MIN_API_KEY_LENGTH = {MIN_API_KEY_LENGTH}")
+    print(f"Using MIN_SECRET_KEY_LENGTH = {MIN_SECRET_KEY_LENGTH}")
     
     # Test 1: Check security validation logic
     print("\n✅ Test 1: Security validation logic")
@@ -38,7 +44,7 @@ def test_placeholder_rejection():
         ("PLACEHOLDER_KEY", True, "literal PLACEHOLDER"),
         ("mx0vglABCDEF1234567890ABCDEF", False, "real API key format (28+ chars)"),
         ("YOUR_KEY_HERE", True, "YOUR_ prefix"),
-        ("short", True, "too short (< 16 chars)"),
+        ("short", True, f"too short (< {MIN_API_KEY_LENGTH} chars)"),
         ("", True, "empty string"),
         (None, True, "None value"),
         ("a1b2c3d4e5f6g7h8i9j0k1l2m3n4", False, "legitimate 32-char key"),
@@ -98,14 +104,38 @@ def test_placeholder_rejection():
         return False
     print("   Status: ✓ All legitimate key formats accepted")
     
+    # Test 4: Verify SECRET_KEY length requirement
+    print("\n✅ Test 4: SECRET_KEY minimum length validation")
+    
+    secret_test_cases = [
+        ("short_key", True, f"Too short (< {MIN_SECRET_KEY_LENGTH} chars)"),
+        ("a" * MIN_SECRET_KEY_LENGTH, False, f"Exactly {MIN_SECRET_KEY_LENGTH} chars"),
+        ("a" * (MIN_SECRET_KEY_LENGTH + 10), False, f"Longer than minimum ({MIN_SECRET_KEY_LENGTH + 10} chars)"),
+    ]
+    
+    secret_tests_passed = True
+    for value, should_fail, description in secret_test_cases:
+        # SECRET_KEY has additional length check
+        rejected = check_placeholder(value) or len(value) < MIN_SECRET_KEY_LENGTH
+        status = "✓" if rejected == should_fail else "✗"
+        if rejected != should_fail:
+            secret_tests_passed = False
+        print(f"   {status} {description}: len={len(value)} -> reject={rejected}")
+    
+    if not secret_tests_passed:
+        print("   Status: ✗ Some SECRET_KEY tests failed")
+        return False
+    print("   Status: ✓ SECRET_KEY length validation passed")
+    
     print("\n" + "=" * 80)
     print("ALL SECURITY VALIDATION TESTS PASSED ✅")
     print("=" * 80)
     print("\n📋 Next Steps for Operators:")
     print("1. Copy .env.example to .env")
     print("2. Replace placeholders with real credentials")
-    print("3. NEVER commit .env file")
-    print("4. Read SECURITY_CHECKLIST.md")
+    print(f"3. Ensure SECRET_KEY is at least {MIN_SECRET_KEY_LENGTH} characters")
+    print("4. NEVER commit .env file")
+    print("5. Read SECURITY_CHECKLIST.md")
     print("=" * 80)
     
     return True

@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from backend.core.config import settings
+from backend.core.security_constants import MIN_API_KEY_LENGTH, MIN_SECRET_KEY_LENGTH
 from backend.routers import auth, telemetry, strategy, trade, brain, vortex
 from backend.services.exchange import ExchangeService
 from backend.services.oms import OMS
@@ -26,7 +27,7 @@ def is_placeholder_credential(value: str) -> bool:
         return True
     if "YOUR_" in value.upper():
         return True
-    if len(value) < 16:  # Real API keys are typically longer
+    if len(value) < MIN_API_KEY_LENGTH:  # Real API keys are typically longer
         return True
     return False
 
@@ -47,8 +48,8 @@ async def lifespan(app: FastAPI):
         if is_placeholder_credential(settings.MEXC_SECRET_KEY):
             security_warnings.append("❌ MEXC_SECRET_KEY is not configured or contains PLACEHOLDER")
         
-        if is_placeholder_credential(settings.SECRET_KEY) or len(settings.SECRET_KEY) < 32:
-            security_warnings.append("❌ SECRET_KEY is weak or contains placeholder text")
+        if is_placeholder_credential(settings.SECRET_KEY) or len(settings.SECRET_KEY) < MIN_SECRET_KEY_LENGTH:
+            security_warnings.append(f"❌ SECRET_KEY is weak (minimum {MIN_SECRET_KEY_LENGTH} characters) or contains placeholder text")
         
         if security_warnings:
             print("\n" + "!" * 80)

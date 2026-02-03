@@ -1,6 +1,12 @@
 """
 Vortex Berserker Engine - Hardened Trading System
 Implements aggressive 8-second pulse trading with mandatory 1.5% stop-loss protection.
+
+🛡️ SECURITY WARNING:
+- API keys are loaded from environment variables ONLY
+- NEVER hardcode credentials in this file
+- See SECURITY_CHECKLIST.md for safe credential management
+- Always test in PAPER mode before LIVE execution
 """
 
 import asyncio
@@ -48,7 +54,13 @@ class VortexBerserker:
         logger.info(f"🔥 Vortex Berserker initialized: Stake=${self.stake}, Stop-Loss={self.stop_loss*100}%")
     
     async def initialize(self):
-        """Initialize exchange connection with environment variables."""
+        """
+        Initialize exchange connection with environment variables.
+        
+        🛡️ SECURITY: Only environment variables are used for credentials.
+        If you see "PLACEHOLDER" in any credential value, the system will refuse to start in LIVE mode.
+        See SECURITY_CHECKLIST.md for setup instructions.
+        """
         if settings.EXECUTION_MODE == "PAPER":
             logger.warning("⚠️ Vortex running in PAPER mode - simulated execution only")
             self.exchange = None

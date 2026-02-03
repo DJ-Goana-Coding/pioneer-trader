@@ -13,8 +13,38 @@ from backend.services.vortex import VortexBerserker
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    print("=" * 80)
     print(f"Starting Pioneer-Admiral V1 in {settings.EXECUTION_MODE} mode...")
     print(f"UI Theme: {settings.UI_THEME} | Safety Modulator: {settings.SAFETY_MODULATOR}")
+    
+    # 🛡️ SECURITY CHECK: Validate credentials are not placeholders
+    if settings.EXECUTION_MODE in ["LIVE", "TESTNET"]:
+        security_warnings = []
+        
+        if not settings.MEXC_API_KEY or "PLACEHOLDER" in settings.MEXC_API_KEY.upper():
+            security_warnings.append("❌ MEXC_API_KEY is not configured or contains PLACEHOLDER")
+        
+        if not settings.MEXC_SECRET_KEY or "PLACEHOLDER" in settings.MEXC_SECRET_KEY.upper():
+            security_warnings.append("❌ MEXC_SECRET_KEY is not configured or contains PLACEHOLDER")
+        
+        if "YOUR_" in settings.SECRET_KEY.upper() or len(settings.SECRET_KEY) < 32:
+            security_warnings.append("❌ SECRET_KEY is weak or contains placeholder text")
+        
+        if security_warnings:
+            print("\n" + "!" * 80)
+            print("🚨 SECURITY ERROR: Cannot start in LIVE/TESTNET mode with placeholder credentials!")
+            print("!" * 80)
+            for warning in security_warnings:
+                print(warning)
+            print("\n📋 Action Required:")
+            print("1. Copy .env.example to .env")
+            print("2. Replace PLACEHOLDER values with your actual credentials")
+            print("3. NEVER commit the .env file to git")
+            print("4. See SECURITY_CHECKLIST.md for detailed instructions")
+            print("!" * 80)
+            raise ValueError("Invalid credentials - cannot start in LIVE mode with placeholders")
+    
+    print("=" * 80)
     
     # Initialize Services
     exchange_service = ExchangeService()

@@ -1,9 +1,36 @@
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Environment and Secrets - NEVER COMMIT THESE
 .env
+.env.local
+.env.*.local
+*.key
+*.pem
+credentials.json
+secrets.json
+config.json
+
+# Virtual Environments
 .venv
 venv/
+env/
+ENV/
+
+# IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+
+# Logs and Databases
 *.log
+*.sql
+*.sqlite
+*.db
+
+# OS Files
+.DS_Store
+Thumbs.db

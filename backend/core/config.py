@@ -2,6 +2,12 @@ import os
 from typing import Literal
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# 🛡️ SECURITY WARNING:
+# ALL sensitive credentials MUST be set via environment variables in .env file
+# NEVER commit .env file to git
+# NEVER hardcode API keys, secrets, or tokens in this file
+# See SECURITY_CHECKLIST.md for detailed security instructions
+
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Pioneer-Admiral V1"
     VERSION: str = "1.0.0"
@@ -11,7 +17,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
-    # Exchange
+    # Exchange API Keys - ⚠️ CRITICAL: Set these in .env file, NOT here!
     BINANCE_API_KEY: str = ""
     BINANCE_SECRET_KEY: str = ""
     MEXC_API_KEY: str = ""

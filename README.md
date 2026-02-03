@@ -74,6 +74,37 @@ Two distinct UI modes for different trading mindsets:
 - GitHub Device Code Flow support
 - Node 08 Bridge integration
 
+### 7. Vortex Berserker Engine 🔥
+**NEW: Hardened Trading System with Mandatory Survival Protocols**
+- **Ejector Seat:** Hard 1.5% stop-loss on ALL positions (cannot be disabled)
+- **Market Orders Only:** Immediate execution, no "sitting there"
+- **8-Second Pulse:** Rapid market response
+- **Multi-Asset Trading:** 7 parallel trading slots
+- **MEXC Integration:** Direct spot trading pipeline
+- **Dual Mode:** PAPER (simulated) and LIVE (real money)
+
+## 🛡️ Security
+
+**⚠️ CRITICAL: Read [SECURITY.md](SECURITY.md) before using with real funds**
+
+This system handles real money and API keys. Key security features:
+
+- **Environment-Based Secrets:** All API keys from `.env` files only (never hardcoded)
+- **No Withdrawal Permissions:** API keys should ONLY have spot trading enabled
+- **Mandatory Stop-Loss:** 1.5% "Ejector Seat" protects every position
+- **Paper Mode First:** Always test with simulated trading before going live
+- **Git-Ignored Secrets:** `.gitignore` prevents accidental key commits
+
+### Emergency: API Key Compromise
+
+If you accidentally expose your API keys:
+1. **IMMEDIATELY** revoke them at your exchange
+2. Generate new keys
+3. Update `.env` file
+4. Never commit keys to git
+
+See [SECURITY.md](SECURITY.md) for complete security guide and emergency procedures.
+
 ## 🛠️ Installation
 
 1. Clone the repository:
@@ -115,6 +146,13 @@ SECRET_KEY=your_secret_key_here
 EXECUTION_MODE=PAPER  # PAPER, TESTNET, or LIVE
 BINANCE_API_KEY=
 BINANCE_SECRET_KEY=
+MEXC_API_KEY=        # For Vortex engine
+MEXC_SECRET_KEY=     # For Vortex engine
+
+# Vortex Engine
+VORTEX_STAKE_USDT=8.0           # Amount per trade
+VORTEX_STOP_LOSS_PCT=0.015      # 1.5% ejector seat
+VORTEX_PULSE_SECONDS=8          # Trading pulse
 
 # V19 Fleet Configuration
 UI_THEME=OVERKILL  # OVERKILL or ZEN

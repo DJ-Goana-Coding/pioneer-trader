@@ -10,7 +10,7 @@ class VortexBerserker:
         # --- SHARD 01 & 05: ENGINE CONFIG ---
         self.base_stake = 10.50    # Base stake per slot
         self.max_slots = 7         # Max async trading slots
-        self.universe = ['SOL/USDT', 'XRP/USDT', 'DOGE/USDT', 'ADA/USDT', 'PEPE/USDT'] # 11 Hot Alts
+        self.universe = ['SOL/USDT', 'XRP/USDT', 'DOGE/USDT', 'ADA/USDT', 'PEPE/USDT'] # 5 Hot Alts
         
         # --- FREEDOM LADDER & SCALP TUNING ---
         self.target_profit_range = (0.10, 0.30) # $0.10 - $0.30 goal
@@ -41,8 +41,10 @@ class VortexBerserker:
 
     async def scout_and_buy(self):
         """1s Polling Loop to fill slots."""
-        if len(self.active_slots) >= self.max_slots: return
-        if not await self.check_gatekeeper(): return
+        if len(self.active_slots) >= self.max_slots:
+            return
+        if not await self.check_gatekeeper():
+            return
 
         # Rapid Scan of Universe
         tickers = await self.exchange.fetch_tickers(self.universe)
@@ -68,7 +70,8 @@ class VortexBerserker:
 
     async def pulse_monitor(self):
         """8-Second Target Monitor."""
-        if not self.active_slots: return
+        if not self.active_slots:
+            return
         
         # Bulk fetch prices for speed
         tickers = await self.exchange.fetch_tickers(list(self.active_slots.keys()))
@@ -129,4 +132,3 @@ class VortexBerserker:
 if __name__ == "__main__":
     vortex = VortexBerserker()
     asyncio.run(vortex.start())
-            

@@ -2,10 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from backend.core.config import settings
 from backend.core.security_constants import MIN_API_KEY_LENGTH, MIN_SECRET_KEY_LENGTH
-from backend.routers import auth, telemetry, strategy, trade, brain, vortex
-from backend.services.exchange import ExchangeService
-from backend.services.oms import OMS
-from backend.services.strategy_engine import StrategyEngine
+from backend.routers import auth, telemetry, brain, vortex
 from backend.services.swarm import SwarmController
 from backend.services.malware_protection import scanner
 from backend.services.archival import archival_service
@@ -35,8 +32,9 @@ def is_placeholder_credential(value: str) -> bool:
 async def lifespan(app: FastAPI):
     # Startup
     print("=" * 80)
-    print(f"Starting Pioneer-Admiral V1 in {settings.EXECUTION_MODE} mode...")
-    print(f"UI Theme: {settings.UI_THEME} | Safety Modulator: {settings.SAFETY_MODULATOR}")
+    print(f"🔥 BERSERKER V6.9 - Hardened MEXC Trading Engine")
+    print(f"Mode: {settings.EXECUTION_MODE} | UI Theme: {settings.UI_THEME}")
+    print(f"Safety Modulator: {settings.SAFETY_MODULATOR}/10")
     
     # 🛡️ SECURITY CHECK: Validate credentials are not placeholders
     if settings.EXECUTION_MODE in ["LIVE", "TESTNET"]:
@@ -59,7 +57,7 @@ async def lifespan(app: FastAPI):
                 print(warning)
             print("\n📋 Action Required:")
             print("1. Copy .env.example to .env")
-            print("2. Replace PLACEHOLDER values with your actual credentials")
+            print("2. Replace PLACEHOLDER values with your actual MEXC credentials")
             print("3. NEVER commit the .env file to git")
             print("4. See SECURITY_CHECKLIST.md for detailed instructions")
             print("!" * 80)
@@ -67,67 +65,67 @@ async def lifespan(app: FastAPI):
     
     print("=" * 80)
     
-    # Initialize Services
-    exchange_service = ExchangeService()
-    await exchange_service.initialize()
+    # ⚡ PRIMARY SERVICE: Vortex Berserker Engine (MEXC-exclusive)
+    vortex_engine = VortexBerserker()
+    await vortex_engine.initialize()
+    print(f"🔥 Vortex Berserker: ARMED")
+    print(f"   Stake: ${settings.VORTEX_STAKE_USDT} USDT per trade")
+    print(f"   Ejector Seat: {settings.VORTEX_STOP_LOSS_PCT*100}% stop-loss (MANDATORY)")
+    print(f"   Pulse: {settings.VORTEX_PULSE_SECONDS}s aggressive interval")
+    print(f"   Slots: 7 parallel ({len(vortex_engine.universe)} pairs)")
+    print(f"   Exchange: MEXC ONLY (market orders only)")
     
-    strategy_engine = StrategyEngine()
-    oms = OMS(exchange_service)
-    
-    # Initialize V19 Swarm
+    # Initialize V19 Swarm Intelligence
     swarm = SwarmController()
     await swarm.initialize()
+    print(f"🧠 Phi-3.5 Swarm: {settings.PHI_DRONE_COUNT} drones active")
     
     # Initialize malware protection
-    print(f"🛡️ Red Flag Malware Protection: {scanner.get_status()['status']}")
+    print(f"🛡️ Red Flag Malware Scanner: {scanner.get_status()['status']}")
     
     # Initialize archival
     print(f"📦 Shadow Archive: {settings.SHADOW_ARCHIVE_PATH}")
     
-    # Initialize Vortex Berserker Engine
-    vortex_engine = VortexBerserker()
-    await vortex_engine.initialize()
-    print(f"🔥 Vortex Berserker: Initialized (Stake=${settings.VORTEX_STAKE_USDT}, Stop-Loss={settings.VORTEX_STOP_LOSS_PCT*100}%)")
-    
-    # Dependency Injection
-    app.state.exchange_service = exchange_service
-    app.state.strategy_engine = strategy_engine
-    app.state.oms = oms
+    # Dependency Injection - Vortex is the PRIMARY trading engine
+    app.state.vortex = vortex_engine
     app.state.swarm = swarm
     app.state.scanner = scanner
     app.state.archival = archival_service
-    app.state.vortex = vortex_engine
+    
+    print("=" * 80)
+    print("✅ BERSERKER V6.9 ONLINE - All systems operational")
+    print("=" * 80)
     
     yield
     
     # Shutdown
-    print("Shutting down Pioneer-Admiral V1...")
+    print("🛑 Shutting down Berserker V6.9...")
     await vortex_engine.shutdown()
-    await exchange_service.shutdown()
     await swarm.shutdown()
+    print("✅ Clean shutdown complete")
 
 app = FastAPI(
-    title=settings.PROJECT_NAME,
-    version=settings.VERSION,
+    title="Berserker V6.9 - MEXC Trading Engine",
+    version="6.9.0",
     lifespan=lifespan
 )
 
-# Include Routers
+# Include Routers - Only active routers for Berserker V6.9
 app.include_router(auth.router)
 app.include_router(telemetry.router)
-app.include_router(strategy.router)
-app.include_router(trade.router)
 app.include_router(brain.router)
-app.include_router(vortex.router)
+app.include_router(vortex.router)  # PRIMARY trading interface
 
 @app.get("/")
 async def root():
     return {
-        "message": "Pioneer-Admiral V1 Online - V19 Fleet Command",
+        "message": "🔥 Berserker V6.9 Online - Hardened MEXC Trading Engine",
         "mode": settings.EXECUTION_MODE,
+        "exchange": "MEXC",
         "ui_theme": settings.UI_THEME,
         "safety_modulator": settings.SAFETY_MODULATOR,
-        "version": "V19"
+        "version": "6.9.0",
+        "warning": "Market orders only - No limit orders - Mandatory 1.5% stop-loss"
     }
 
 if __name__ == "__main__":

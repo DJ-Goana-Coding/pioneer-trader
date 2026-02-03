@@ -77,10 +77,16 @@ class VortexBerserker:
             logger.warning("⚠️ Falling back to PAPER mode")
             self.exchange = None
     
-    async def check_survival(self, slot_id: int, current_price: float) -> bool:
+    async def check_stop_loss_triggered(self, slot_id: int, current_price: float) -> bool:
         """
         THE EJECTOR SEAT: Mandatory stop-loss check before any other logic.
-        Returns True if position was ejected.
+        
+        Args:
+            slot_id: The trading slot identifier
+            current_price: Current market price for the position
+            
+        Returns:
+            True if stop-loss was triggered and position ejected, False otherwise
         """
         pos = self.active_slots.get(slot_id)
         if not pos:
@@ -101,6 +107,13 @@ class VortexBerserker:
         """
         Immediate market exit - No limit orders that can "sit there".
         Executes synchronously to guarantee exit.
+        
+        Args:
+            slot_id: The trading slot identifier for the position to close
+            
+        Behavior:
+            - PAPER mode: Simulates sell and removes position from active_slots
+            - LIVE mode: Executes real market sell order on exchange
         """
         pos = self.active_slots.get(slot_id)
         if not pos:
@@ -134,7 +147,18 @@ class VortexBerserker:
                 del self.active_slots[slot_id]
     
     async def execute_market_buy(self, slot_id: int, symbol: str, price: float):
-        """Execute market buy order."""
+        """
+        Execute market buy order.
+        
+        Args:
+            slot_id: The trading slot identifier
+            symbol: Trading pair in format 'BASE/QUOTE' (e.g., 'BTC/USDT')
+            price: Current market price for position sizing
+            
+        Behavior:
+            - PAPER mode: Simulates buy and adds position to active_slots
+            - LIVE mode: Executes real market buy order on exchange
+        """
         try:
             qty = self.stake / price
             
@@ -164,7 +188,18 @@ class VortexBerserker:
             logger.error(f"❌ Market BUY failed for {symbol}: {e}")
     
     async def fetch_market_data(self, symbol: str, timeframe: str = '1m', limit: int = 50):
-        """Fetch OHLCV data with fallback to mock data in paper mode."""
+        """
+        Fetch OHLCV data with fallback to mock data in paper mode.
+        
+        Args:
+            symbol: Trading pair in format 'BASE/QUOTE' (e.g., 'BTC/USDT')
+            timeframe: Candle interval (default: '1m' for 1-minute candles)
+            limit: Number of candles to fetch (default: 50)
+            
+        Returns:
+            List of OHLCV arrays: [[timestamp, open, high, low, close, volume], ...]
+            Returns empty list if fetch fails.
+        """
         try:
             if self.exchange is None:
                 # Generate mock data for paper trading
@@ -195,6 +230,18 @@ class VortexBerserker:
         """
         Aggressive 8-second pulse trading loop for a single slot.
         Implements RSI(30/70) + EMA50 strategy with mandatory stop-loss.
+        
+        Args:
+            slot_id: The trading slot identifier
+            symbol: Trading pair in format 'BASE/QUOTE' (e.g., 'SOL/USDT')
+            
+        This is a long-running coroutine that executes until self.running is set to False.
+        Each iteration:
+        1. Fetches latest market data
+        2. Calculates technical indicators (RSI, EMA50)
+        3. If position exists: checks stop-loss FIRST, then take-profit conditions
+        4. If no position: checks entry conditions (oversold + above EMA50)
+        5. Sleeps for pulse_interval (default 8 seconds)
         """
         logger.info(f"🎯 Slot {slot_id} activated for {symbol}")
         
@@ -218,8 +265,8 @@ class VortexBerserker:
                 
                 # Position management
                 if slot_id in self.active_slots:
-                    # PRIORITY 1: Check survival (stop-loss)
-                    ejected = await self.check_survival(slot_id, current_price)
+                    # PRIORITY 1: Check stop-loss (ejector seat)
+                    ejected = await self.check_stop_loss_triggered(slot_id, current_price)
                     if ejected:
                         await asyncio.sleep(self.pulse_interval)
                         continue

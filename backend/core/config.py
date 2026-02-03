@@ -6,8 +6,8 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Pioneer-Admiral V1"
     VERSION: str = "1.0.0"
     
-    # Security
-    SECRET_KEY: str = "CHANGE_ME_IN_PRODUCTION_USE_OPENSSL_RAND_HEX_32"
+    # Security (MUST be set in production via environment variables)
+    SECRET_KEY: str = ""  # REQUIRED: Set via environment or generate with: openssl rand -hex 32
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     

@@ -46,8 +46,11 @@ async def stop_vortex(request: Request, current_user: Dict = Depends(get_current
 
 
 @router.get("/status")
-async def get_vortex_status(request: Request):
-    """Get current status of the Vortex engine."""
+async def get_vortex_status(request: Request, current_user: Dict = Depends(get_current_user)):
+    """
+    Get current status of the Vortex engine.
+    Requires authentication to prevent exposure of trading configuration.
+    """
     try:
         vortex = request.app.state.vortex
         return vortex.get_status()

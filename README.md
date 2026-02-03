@@ -107,6 +107,10 @@ See [SECURITY.md](SECURITY.md) for complete security guide and emergency procedu
 
 ## 🛠️ Installation
 
+See [QUICKSTART.md](QUICKSTART.md) for a step-by-step guide to get running in under 5 minutes.
+
+### Quick Setup
+
 1. Clone the repository:
 ```bash
 git clone https://github.com/DJ-Goana-Coding/pioneer-trader.git
@@ -122,17 +126,20 @@ pip install -r requirements.txt
 ```bash
 cp .env.example .env
 # Edit .env with your settings
+# Generate SECRET_KEY: openssl rand -hex 32
 ```
 
-4. Run the backend:
+4. **Start with PAPER mode** (simulated trading):
 ```bash
-uvicorn backend.main:app --host 0.0.0.0 --port 8000
+EXECUTION_MODE=PAPER PYTHONPATH=$PWD python -m backend.main
 ```
 
-5. Run the Streamlit UI:
+5. Run the Streamlit UI (optional):
 ```bash
 streamlit run streamlit_app/app.py
 ```
+
+📖 **Detailed Guide:** See [QUICKSTART.md](QUICKSTART.md)
 
 ## ⚙️ Configuration
 

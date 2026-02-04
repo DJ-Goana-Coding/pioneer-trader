@@ -101,6 +101,6 @@ class VortexBerserker:
 # CRITICAL ALIAS for FastAPI Compatibility
 VortexEngine = VortexBerserker
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     vortex = VortexBerserker()
     asyncio.run(vortex.start())

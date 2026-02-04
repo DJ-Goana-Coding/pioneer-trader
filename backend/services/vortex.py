@@ -1,30 +1,154 @@
-# Updated vortex.py
+import os, asyncio, ccxt.async_support as ccxt
+from datetime import datetime
+import time
 
-# Your current code will have the existing lines where base_stake is utilized. Update line 11 here:
+# IDENTITY: Quantum Goanna Tech No Logics | COMMANDER: Darrell
+# MISSION: 7-Slot Vortex Trading & Freedom Ladder Progression
 
-base_stake = 8.00  # Changed from 10.50 to 8.00
+class VortexBerserker:
+    def __init__(self):
+        # --- SHARD 01 & 05: ENGINE CONFIG ---
+        self.base_stake = 8.00    # Base stake per slot - LIVE FIRE MODE
+        self.max_slots = 7         # Max async trading slots
+        self.universe = ['SOL/USDT', 'XRP/USDT', 'DOGE/USDT', 'ADA/USDT', 'PEPE/USDT'] # 5 Hot Alts
+        
+        # --- FREEDOM LADDER & SCALP TUNING ---
+        self.target_profit_range = (0.10, 0.30) # $0.10 - $0.30 goal
+        self.ladder_step = 5.00                 # +$5.00 on fill
+        self.cycles_to_reset = 10               # Reset after 10 cycles
+        self.cycle_count = 0
+        
+        # --- SHARD 01: GATEKEEPER (MLOFI) ---
+        self.e_n = 0.5 # Gatekeeper Vector. If < 0, BUYS are blocked
+        
+        # --- RISK MANAGEMENT ---
+        self.stop_loss_pct = 0.015  # 1.5% stop-loss
+        
+        self.active_slots = {} # {symbol: {'buy_price': x, 'qty': y, 'start_time': z}}
+        self.exchange = None
+        self._init_mexc()
 
-# After line 22, add:
+    def _init_mexc(self):
+        """Initializes high-frequency MEXC bridge."""
+        self.exchange = ccxt.mexc({
+            'apiKey': os.getenv('MEXC_API_KEY'),
+            'secret': os.getenv('MEXC_SECRET'),
+            'enableRateLimit': True,
+            'rateLimit': 50, # High-intensity pulse
+            'options': {'defaultType': 'spot'}
+        })
 
-stop_loss_pct = 0.015  # New stop loss percentage
+    async def check_gatekeeper(self):
+        """MLOFI (e_n) vector check."""
+        return self.e_n >= 0
 
-# In pulse_monitor method (starting at line 71), add the stop-loss check before the profit target check:
+    async def scout_and_buy(self):
+        """1s Polling Loop to fill slots."""
+        if len(self.active_slots) >= self.max_slots:
+            return
+        if not await self.check_gatekeeper():
+            return
 
-loss_pct = (data['buy_price'] - current_price) / data['buy_price']  # Calculate loss percentage
-if loss_pct >= self.stop_loss_pct:
-    self.execute_exit(reason='STOP_LOSS')  # Call execute_exit with reason
+        # Rapid Scan of Universe
+        tickers = await self.exchange.fetch_tickers(self.universe)
+        for symbol in self.universe:
+            if symbol not in self.active_slots and len(self.active_slots) < self.max_slots:
+                price = tickers[symbol]['last']
+                # P25 Sniper Logic Trigger
+                # (Simulated immediate entry for 8s pulse demonstration)
+                await self.execute_order(symbol, price)
 
-# Update the execute_exit method signature:
-def execute_exit(self, reason='MANUAL'):
-    # Existing code...
-    if reason == 'STOP_LOSS':
-        # Add conditional handling for stop loss here
-        print('Exiting due to stop-loss')
-    elif reason == 'MANUAL':
-        print('Exiting manually')
+    async def execute_order(self, symbol, price):
+        try:
+            # MEXC Minimum order is 1 USDT as of 2026
+            order = await self.exchange.create_market_buy_order(symbol, self.base_stake / price)
+            self.active_slots[symbol] = {
+                'buy_price': price,
+                'qty': order['amount'] if 'amount' in order else (self.base_stake / price),
+                'start_time': time.time()
+            }
+            self._log(f"🔥 SLOT OPEN: {symbol} at ${price:.4f}")
+        except Exception as e:
+            self._log(f"⚠️ BUY FAIL: {e}")
 
-# Update ladder reset:
-ladder_reset = 8.00  # Now using 8.00 instead of 10.50
+    async def pulse_monitor(self):
+        """8-Second Target Monitor with 1.5% Stop-Loss."""
+        if not self.active_slots:
+            return
+        
+        # Bulk fetch prices for speed
+        tickers = await self.exchange.fetch_tickers(list(self.active_slots.keys()))
+        
+        for symbol, data in list(self.active_slots.items()):
+            current_price = tickers[symbol]['last']
+            profit = (current_price - data['buy_price']) * data['qty']
+            loss_pct = (data['buy_price'] - current_price) / data['buy_price']
+            elapsed = time.time() - data['start_time']
 
-# Update startup log message:
-print("LIVE FIRE MODE")  # Changed log message
+            # 🛡️ STOP-LOSS CHECK (1.5% drawdown)
+            if loss_pct >= self.stop_loss_pct:
+                await self.execute_exit(symbol, profit, force=True, reason='STOP_LOSS')
+            # 🎯 TARGET REACHED: 10-30 cents
+            elif profit >= self.target_profit_range[0]:
+                await self.execute_exit(symbol, profit, reason='TARGET')
+            # ⏱️ Time-based kill-switch to free slots
+            elif elapsed > 60:
+                await self.execute_exit(symbol, profit, force=True, reason='TIMEOUT')
+
+    async def execute_exit(self, symbol, profit, force=False, reason='MANUAL'):
+        try:
+            qty = self.active_slots[symbol]['qty']
+            await self.exchange.create_market_sell_order(symbol, qty)
+            
+            # Freedom Ladder Logic
+            self.cycle_count += 1
+            if self.cycle_count >= self.cycles_to_reset:
+                self.base_stake = 8.00  # Reset to live-fire stake
+                self.cycle_count = 0
+                self._log("♻️ LADDER RESET: Stake back to $8.00")
+            else:
+                # Add ladder logic or status here
+                pass
+
+            if reason == 'STOP_LOSS':
+                status = f"🛡️ STOP-LOSS HIT"
+            elif reason == 'TARGET':
+                status = f"💰 TARGET REACHED"
+            elif reason == 'TIMEOUT':
+                status = f"⏱️ TIMEOUT EXIT"
+            else:
+                status = "🔄 MANUAL EXIT"
+                
+            self._log(f"{status}: {symbol} | Profit: ${profit:+.2f}")
+            del self.active_slots[symbol]
+        except Exception as e:
+            self._log(f"❌ EXIT FAIL: {e}")
+
+    def _log(self, msg):
+        # UI: 5-8 line rolling window
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
+
+    async def god_protocol_check(self):
+        """Shard 02: Auto-Healer - Verify process integrity."""
+        # Simulated checksum/process guard
+        pass
+
+    async def start(self):
+        self._log("⚔️ VORTEX V6.9 BERSERKER ENGAGED. LIVE FIRE MODE - $8.00 STAKES")
+        self._log(f"🛡️ STOP-LOSS: {self.stop_loss_pct*100}% | 🎯 TARGET: ${self.target_profit_range[0]}-${self.target_profit_range[1]}")
+        while True:
+            try:
+                await self.god_protocol_check()
+                await self.scout_and_buy()
+                await self.pulse_monitor()
+                await asyncio.sleep(1) # The Pulse
+            except Exception as e:
+                self._log(f"💀 AUTO-HEALER TRIGGERED: {e}")
+                await asyncio.sleep(1)
+
+# Ensure legacy imports of VortexEngine map to the hardened Berserker class
+VortexEngine = VortexBerserker
+
+if __name__ == "__main__":
+    vortex = VortexBerserker()
+    asyncio.run(vortex.start())

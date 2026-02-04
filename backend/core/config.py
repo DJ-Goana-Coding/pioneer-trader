@@ -7,6 +7,11 @@ from pydantic import BaseModel
 class Settings(BaseModel):
     PROJECT_NAME: str = "Pioneer Trader"
     
+    # --- COMMANDER MANDATE: LIVE FIRE ---
+    EXECUTION_MODE: str = "LIVE"
+    VORTEX_STAKE_USDT: float = 8.0
+    VORTEX_STOP_LOSS_PCT: float = 0.015
+    
     # MEXC EXCHANGE CREDENTIALS (Primary)
     MEXC_API_KEY: str = os.getenv("MEXC_API_KEY", "")
     MEXC_SECRET: str = os.getenv("MEXC_SECRET", "")
@@ -19,15 +24,12 @@ class Settings(BaseModel):
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379")
     REDIS_ENABLED: bool = os.getenv("REDIS_ENABLED", "True").lower() == "true"
     
-    # EXECUTION MODE: "PAPER", "TESTNET", "LIVE"
-    EXECUTION_MODE: str = os.getenv("EXECUTION_MODE", "LIVE")
-    
     # RISK MANAGEMENT
     MAX_ORDER_NOTIONAL: float = float(os.getenv("MAX_ORDER_NOTIONAL", "50.0"))
-    MIN_SLOT_SIZE: float = float(os.getenv("MIN_SLOT_SIZE", "10.50"))
+    MIN_SLOT_SIZE: float = 8.0
     
     # SYSTEM CONFIG
-    PORT: int = int(os.getenv("PORT", 10000))
+    PORT: int = int(os.getenv("PORT", "10000"))
     DIAGNOSTIC_MODE: bool = os.getenv("DIAGNOSTIC_MODE", "True").lower() == "true"
     
     # V19 SECURITY & ARCHIVAL

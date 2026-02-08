@@ -1,10 +1,11 @@
 # ================================================================
 # 🚀 PIONEER TRADER BACKEND - CITADEL GATEWAY
 # ================================================================
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 import asyncio
 import uvicorn
 from backend.core.logging_config import setup_logging
+from backend.core.security import get_current_admin
 
 logger = setup_logging("main")
 app = FastAPI(title="Citadel API")
@@ -31,8 +32,14 @@ async def startup_event():
 async def root():
     return {"status": "Citadel Online", "engine": "Vortex V6.9 Berserker"}
 
+@app.get("/health")
+async def health():
+    """Public health check endpoint for load balancers"""
+    return {"status": "ok"}
+
 @app.get("/telemetry")
-async def get_telemetry():
+async def get_telemetry(current_user: str = Depends(get_current_admin)):
+    """Protected telemetry endpoint - requires authentication"""
     if not vortex: return {"status": "Starting..."}
     return {
         "status": "Active",

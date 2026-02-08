@@ -8,6 +8,9 @@ from datetime import datetime
 from typing import Dict, List, Optional
 from pathlib import Path
 from backend.core.config import settings
+from backend.core.logging_config import setup_logging
+
+logger = setup_logging("archival")
 
 class ArchivalService:
     """Manages trade logs and archival to GitHub Pages and Shadow Archive"""
@@ -44,7 +47,7 @@ class ArchivalService:
                 f.write(json.dumps(log_entry) + "\n")
                 
         except Exception as e:
-            print(f"Warning: Failed to archive to shadow: {e}")
+            logger.warning(f"Failed to archive to shadow: {e}")
     
     def get_recent_logs(self, limit: int = 100) -> List[Dict]:
         """Get recent trade logs"""

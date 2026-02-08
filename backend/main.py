@@ -28,6 +28,11 @@ async def startup_event():
     except Exception as e:
         logger.error(f"🚨 IGNITION FAILURE: {e}")
 
+@app.head("/")
+async def health_check_head():
+    """Health check endpoint for HEAD requests from deployment platforms"""
+    return
+
 @app.get("/")
 async def root():
     return {"status": "Citadel Online", "engine": "Vortex V6.9 Berserker"}

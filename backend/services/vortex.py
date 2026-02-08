@@ -197,6 +197,8 @@ class VortexBerserker:
                 # Sync-Guard: Enforce post-buy cooldown (5 seconds)
                 time_held = time.time() - pos['time']
                 if time_held < self.POST_BUY_COOLDOWN:
+                    # Log at debug level for troubleshooting
+                    logger.debug(f"⏳ Cooldown active: {sym} held for {time_held:.1f}s/{self.POST_BUY_COOLDOWN}s")
                     continue  # Skip this slot until cooldown expires
                 
                 curr_price = tickers[sym]['last']

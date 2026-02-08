@@ -50,7 +50,7 @@ print("=" * 80)
 
 malicious_code = """
 import os
-os.system("rm -rf /")
+os.system("echo 'dangerous command'")
 eval(user_input)
 """
 

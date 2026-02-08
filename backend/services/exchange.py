@@ -16,6 +16,15 @@ class ExchangeService:
     async def initialize(self):
         """Initialize MEXC exchange connection"""
         
+        # Validate credentials for LIVE mode
+        if self.mode == "LIVE":
+            if not settings.MEXC_API_KEY or not settings.MEXC_SECRET:
+                raise ValueError(
+                    "MEXC_API_KEY and MEXC_SECRET must be set for LIVE mode. "
+                    "Please configure these in your .env file or set EXECUTION_MODE=PAPER"
+                )
+            logger.warning("🔥 LIVE MODE ENABLED - Real trading will occur!")
+        
         exchange_config = {
             'apiKey': settings.MEXC_API_KEY,
             'secret': settings.MEXC_SECRET,
@@ -31,10 +40,10 @@ class ExchangeService:
                 'enableRateLimit': True,
                 'options': {'defaultType': 'spot'}
             })
-            print("📝 Exchange initialized in PAPER mode (data only)")
+            logger.info("📝 Exchange initialized in PAPER mode (data only)")
             
         elif self.mode == "TESTNET":
-            print("⚠️ MEXC has no testnet - using PAPER mode")
+            logger.warning("⚠️ MEXC has no testnet - using PAPER mode")
             self.exchange = ccxt.mexc({
                 'enableRateLimit': True,
                 'options': {'defaultType': 'spot'}
@@ -43,11 +52,11 @@ class ExchangeService:
             
         else:
             self.exchange = ccxt.mexc(exchange_config)
-            print("🔥 Exchange initialized in LIVE mode")
+            logger.info("🔥 Exchange initialized in LIVE mode")
             
         await self.exchange.load_markets()
         logger.info(f"Exchange initialized in {self.mode} mode")
-        print(f"✅ MEXC Markets loaded: {len(self.exchange.markets)} pairs available")
+        logger.info(f"✅ MEXC Markets loaded: {len(self.exchange.markets)} pairs available")
 
     async def shutdown(self):
         if self.exchange:

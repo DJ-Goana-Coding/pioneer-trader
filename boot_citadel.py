@@ -11,8 +11,8 @@ def stream_logs(process, name):
 
 def boot():
     print("🔌 KILLING ZOMBIE PROCESSES...")
-    os.system("pkill -f uvicorn")
-    os.system("pkill -f streamlit")
+    subprocess.run(["pkill", "-f", "uvicorn"], check=False)
+    subprocess.run(["pkill", "-f", "streamlit"], check=False)
 
     print("🧠 IGNITING VORTEX BRAIN (FastAPI :8000)...")
     backend = subprocess.Popen(

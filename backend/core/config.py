@@ -7,8 +7,8 @@ from pydantic import BaseModel
 class Settings(BaseModel):
     PROJECT_NAME: str = "Pioneer Trader"
     
-    # --- COMMANDER MANDATE: LIVE FIRE ---
-    EXECUTION_MODE: str = "LIVE"
+    # --- COMMANDER MANDATE: PAPER TRADING BY DEFAULT ---
+    EXECUTION_MODE: str = os.getenv("EXECUTION_MODE", "PAPER")
     VORTEX_STAKE_USDT: float = 8.0
     VORTEX_STOP_LOSS_PCT: float = 0.015
     
@@ -36,6 +36,12 @@ class Settings(BaseModel):
     ENABLE_MALWARE_PROTECTION: bool = os.getenv("ENABLE_MALWARE_PROTECTION", "True").lower() == "true"
     SHADOW_ARCHIVE_PATH: str = os.getenv("SHADOW_ARCHIVE_PATH", "/tmp/shadow_archive")
     ENABLE_GITHUB_PAGES_EXPORT: bool = os.getenv("ENABLE_GITHUB_PAGES_EXPORT", "False").lower() == "true"
+    
+    # AUTHENTICATION & SECURITY
+    ADMIN_USERNAME: str = os.getenv("ADMIN_USERNAME", "admin")
+    ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "")
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
 settings = Settings()
 

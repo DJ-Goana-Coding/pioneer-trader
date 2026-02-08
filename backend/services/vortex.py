@@ -21,6 +21,9 @@ class VortexBerserker:
     # Market Scanning Parameters
     TOP_MOVERS_LIMIT = 10  # Number of top movers to check for entry signals
     
+    # Sync-Guard Parameters
+    POST_BUY_COOLDOWN = 5.0  # 5-second cooldown after buy before allowing sell
+    
     def __init__(self):
         self.base_stake = 8.00 
         self.max_slots = 7
@@ -29,6 +32,7 @@ class VortexBerserker:
         self.exchange = None
         self.current_pulse = 2  # Adaptive pulse: 2s default, 4s on rate limit
         self.pulse_reset_time = None  # Track when to reset pulse
+        self.blacklisted_symbols = set()  # Symbols that returned error 10007
         self._init_mexc()
 
     def _init_mexc(self):
@@ -48,6 +52,10 @@ class VortexBerserker:
             # Filter to USDT pairs with sufficient volume
             filtered = []
             for symbol, ticker in all_tickers.items():
+                # Skip blacklisted symbols (error 10007)
+                if symbol in self.blacklisted_symbols:
+                    continue
+                    
                 if symbol.endswith('/USDT') and ticker.get('quoteVolume', 0) > 500000:
                     # Using 24h percentage change for sorting market movers
                     # This helps identify hot symbols for both wings:
@@ -83,7 +91,13 @@ class VortexBerserker:
             df = pd.DataFrame(ohlcv, columns=['time', 'open', 'high', 'low', 'close', 'vol'])
             return df
         except Exception as e:
-            self._log(f"⚠️ CANDLE ERROR {symbol}: {e}")
+            # Check for error code 10007 (invalid symbol)
+            error_str = str(e)
+            if '10007' in error_str:
+                self.blacklisted_symbols.add(symbol)
+                self._log(f"🚫 BLACKLIST: {symbol} (Error 10007 - Invalid symbol)")
+            else:
+                self._log(f"⚠️ CANDLE ERROR {symbol}: {e}")
             return None
 
     def get_available_slot_type(self):
@@ -180,6 +194,13 @@ class VortexBerserker:
             tickers = await self.exchange.fetch_tickers(list(self.active_slots.keys()))
             
             for sym, pos in list(self.active_slots.items()):
+                # Sync-Guard: Enforce post-buy cooldown (5 seconds)
+                time_held = time.time() - pos['time']
+                if time_held < self.POST_BUY_COOLDOWN:
+                    # Log at debug level for troubleshooting
+                    logger.debug(f"⏳ Cooldown active: {sym} held for {time_held:.1f}s/{self.POST_BUY_COOLDOWN}s")
+                    continue  # Skip this slot until cooldown expires
+                
                 curr_price = tickers[sym]['last']
                 profit_pct = (curr_price - pos['entry']) / pos['entry']
                 
@@ -221,6 +242,16 @@ class VortexBerserker:
             await self.exchange.create_market_sell_order(symbol, qty)
             self._log(f"{reason}: {symbol} Closed.")
             del self.active_slots[symbol]
+        except ccxt.ExchangeError as e:
+            # Sync-Guard: Handle error 30005 (Oversold - exchange already closed position)
+            error_str = str(e)
+            if '30005' in error_str:
+                self._log(f"🛡️ SYNC-GUARD: Slot forced clear (Exchange side closed) - {symbol}")
+                # Force clear the slot since exchange already closed it
+                if symbol in self.active_slots:
+                    del self.active_slots[symbol]
+            else:
+                self._log(f"❌ EXIT FAILED: {e}")
         except Exception as e:
             self._log(f"❌ EXIT FAILED: {e}")
 
@@ -228,9 +259,10 @@ class VortexBerserker:
         logger.info(msg)
 
     async def start(self):
-        self._log("🌊 HYBRID SWARM ACTIVE: 4 PIRANHAS // 3 HARVESTERS")
+        self._log("🛡️ T.I.A. HYBRID SWARM: SYNC-GUARD ARMED & STABILIZED")
         self._log(f"🦈 PIRANHA: Green candles → 0.4% exits")
         self._log(f"🌾 HARVESTER: Top movers → Trailing 0.5% grid")
+        self._log(f"🛡️ SYNC-GUARD: 5s cooldown + Error 30005/10007 protection")
         
         while True:
             # Check if pulse needs to be reset

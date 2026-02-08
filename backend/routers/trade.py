@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Request, HTTPException
 from backend.core.security import get_current_user
 from backend.services.oms import OMS
 from pydantic import BaseModel, Field, validator
+import math
 
 router = APIRouter(prefix="/trade", tags=["trade"])
 
@@ -13,7 +14,7 @@ class OrderRequest(BaseModel):
     
     @validator('amount')
     def validate_amount(cls, v):
-        if v <= 0 or v != v:  # Check for negative, zero, or NaN
+        if v <= 0 or math.isnan(v):  # Check for negative, zero, or NaN
             raise ValueError("Amount must be a positive number")
         if v > 10000:  # Sanity check - adjust based on your risk limits
             raise ValueError("Amount exceeds maximum allowed order size")

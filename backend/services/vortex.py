@@ -9,10 +9,16 @@ class VortexBerserker:
     PIRANHA_SLOTS = [1, 2, 3, 4]  # Wing A: Fast momentum (0.4% exits)
     HARVESTER_SLOTS = [5, 6, 7]   # Wing B: Trailing grid
     
+    # Trading Parameters
+    PIRANHA_PROFIT_TARGET = 0.004  # 0.4% fixed profit exit
+    HARVESTER_TRAIL_START = 0.005  # 0.5% profit to start trailing
+    HARVESTER_PULLBACK_EXIT = 0.015  # 1.5% pullback from peak to exit
+    STOP_LOSS_PCT = 0.015  # 1.5% hard stop loss for both wings
+    
     def __init__(self):
         self.base_stake = 8.00 
         self.max_slots = 7
-        self.stop_loss_pct = 0.015
+        self.stop_loss_pct = self.STOP_LOSS_PCT
         self.active_slots = {}  # {symbol: {'entry': price, 'qty': amount, 'time': timestamp, 'wing': 'piranha'|'harvester', 'slot': 1-7, 'peak_profit': 0.0}}
         self.exchange = None
         self.current_pulse = 2  # Adaptive pulse: 2s default, 4s on rate limit
@@ -37,17 +43,18 @@ class VortexBerserker:
             filtered = []
             for symbol, ticker in all_tickers.items():
                 if symbol.endswith('/USDT') and ticker.get('quoteVolume', 0) > 500000:
-                    # Calculate 1m change if available
-                    change_1m = ticker.get('percentage', 0)  # Note: This is typically 24h change
+                    # Note: Using 24h percentage change as proxy for momentum
+                    # Ideally would use 1m change, but most exchanges only provide 24h
+                    change_24h = ticker.get('percentage', 0)
                     filtered.append({
                         'symbol': symbol,
                         'volume_24h': ticker.get('quoteVolume', 0),
-                        'change_1m': change_1m,
+                        'change_24h': change_24h,
                         'last': ticker.get('last', 0)
                     })
             
-            # Sort by change (descending) - strongest movers first
-            sorted_tickers = sorted(filtered, key=lambda x: x['change_1m'], reverse=True)
+            # Sort by 24h change (descending) - strongest movers first
+            sorted_tickers = sorted(filtered, key=lambda x: x['change_24h'], reverse=True)
             return sorted_tickers
             
         except ccxt.RateLimitExceeded:
@@ -103,7 +110,8 @@ class VortexBerserker:
             
             if wing_type == 'piranha':
                 # Piranha Wing: Green candle momentum (Close > Open)
-                for ticker in market_data[:20]:  # Check top 20 movers
+                # Limit to top 10 movers to reduce API calls
+                for ticker in market_data[:10]:
                     symbol = ticker['symbol']
                     if symbol in self.active_slots:
                         continue
@@ -121,12 +129,13 @@ class VortexBerserker:
                         return  # One entry per cycle
                         
             elif wing_type == 'harvester':
-                # Harvester Wing: Top 3 market movers by % change
-                top_movers = [t for t in market_data[:3] if t['symbol'] not in self.active_slots]
+                # Harvester Wing: Top market movers by % change
+                # Check top 10 to ensure we can find available symbols
+                top_movers = [t for t in market_data[:10] if t['symbol'] not in self.active_slots]
                 if top_movers:
                     ticker = top_movers[0]
                     symbol = ticker['symbol']
-                    self._log(f"🌾 HARVESTER SIGNAL: {symbol} (Top Mover: {ticker['change_1m']:.2f}%)")
+                    self._log(f"🌾 HARVESTER SIGNAL: {symbol} (Top Mover: {ticker['change_24h']:.2f}%)")
                     await self.execute_order(symbol, ticker['last'], wing_type, slot_num)
                     
         except ccxt.RateLimitExceeded:
@@ -168,10 +177,10 @@ class VortexBerserker:
                 
                 if pos['wing'] == 'piranha':
                     # Piranha Wing: Fixed 0.4% take-profit
-                    if profit_pct >= 0.004:  # 0.4%
+                    if profit_pct >= self.PIRANHA_PROFIT_TARGET:
                         await self.execute_exit(sym, pos['qty'], f"💰 PIRANHA PROFIT (Slot {pos['slot']})")
                     # Stop loss at -1.5%
-                    elif profit_pct <= -0.015:
+                    elif profit_pct <= -self.STOP_LOSS_PCT:
                         await self.execute_exit(sym, pos['qty'], f"🛡️ PIRANHA STOP (Slot {pos['slot']})")
                 
                 elif pos['wing'] == 'harvester':
@@ -180,15 +189,15 @@ class VortexBerserker:
                     if profit_pct > pos['peak_profit']:
                         pos['peak_profit'] = profit_pct
                         # Trail stop-loss up by 0.5% increments
-                        if profit_pct >= 0.005:  # Only start trailing after 0.5%
+                        if profit_pct >= self.HARVESTER_TRAIL_START:
                             self._log(f"📈 HARVESTER TRAILING: {sym} Peak: {pos['peak_profit']*100:.2f}%")
                     
                     # Exit on 1.5% pullback from peak
                     pullback = pos['peak_profit'] - profit_pct
-                    if pos['peak_profit'] > 0 and pullback >= 0.015:  # 1.5% pullback
+                    if pos['peak_profit'] > 0 and pullback >= self.HARVESTER_PULLBACK_EXIT:
                         await self.execute_exit(sym, pos['qty'], f"🌾 HARVESTER TRAIL EXIT (Slot {pos['slot']}, Peak: {pos['peak_profit']*100:.1f}%)")
                     # Hard stop loss at -1.5%
-                    elif profit_pct <= -0.015:
+                    elif profit_pct <= -self.STOP_LOSS_PCT:
                         await self.execute_exit(sym, pos['qty'], f"🛡️ HARVESTER STOP (Slot {pos['slot']})")
                         
         except ccxt.RateLimitExceeded:

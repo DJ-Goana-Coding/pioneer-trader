@@ -15,6 +15,9 @@ class VortexBerserker:
     HARVESTER_PULLBACK_EXIT = 0.015  # 1.5% pullback from peak to exit
     STOP_LOSS_PCT = 0.015  # 1.5% hard stop loss for both wings
     
+    # Market Scanning Parameters
+    TOP_MOVERS_LIMIT = 10  # Number of top movers to check for entry signals
+    
     def __init__(self):
         self.base_stake = 8.00 
         self.max_slots = 7
@@ -43,8 +46,10 @@ class VortexBerserker:
             filtered = []
             for symbol, ticker in all_tickers.items():
                 if symbol.endswith('/USDT') and ticker.get('quoteVolume', 0) > 500000:
-                    # Note: Using 24h percentage change as proxy for momentum
-                    # Ideally would use 1m change, but most exchanges only provide 24h
+                    # Using 24h percentage change for sorting market movers
+                    # This helps identify hot symbols for both wings:
+                    # - Piranha: Checks green candle on hot symbols for momentum
+                    # - Harvester: Selects top movers directly
                     change_24h = ticker.get('percentage', 0)
                     filtered.append({
                         'symbol': symbol,
@@ -110,8 +115,8 @@ class VortexBerserker:
             
             if wing_type == 'piranha':
                 # Piranha Wing: Green candle momentum (Close > Open)
-                # Limit to top 10 movers to reduce API calls
-                for ticker in market_data[:10]:
+                # Check top movers first, then validate with green candle
+                for ticker in market_data[:self.TOP_MOVERS_LIMIT]:
                     symbol = ticker['symbol']
                     if symbol in self.active_slots:
                         continue
@@ -129,9 +134,9 @@ class VortexBerserker:
                         return  # One entry per cycle
                         
             elif wing_type == 'harvester':
-                # Harvester Wing: Top market movers by % change
-                # Check top 10 to ensure we can find available symbols
-                top_movers = [t for t in market_data[:10] if t['symbol'] not in self.active_slots]
+                # Harvester Wing: Top market movers by 24h % change
+                # Check top movers to ensure we can find available symbols
+                top_movers = [t for t in market_data[:self.TOP_MOVERS_LIMIT] if t['symbol'] not in self.active_slots]
                 if top_movers:
                     ticker = top_movers[0]
                     symbol = ticker['symbol']
@@ -187,9 +192,10 @@ class VortexBerserker:
                     # Harvester Wing: Trailing Grid System
                     # Update peak profit
                     if profit_pct > pos['peak_profit']:
+                        old_peak = pos['peak_profit']
                         pos['peak_profit'] = profit_pct
-                        # Trail stop-loss up by 0.5% increments
-                        if profit_pct >= self.HARVESTER_TRAIL_START:
+                        # Log only significant trailing activations (every 0.5% increment)
+                        if profit_pct >= self.HARVESTER_TRAIL_START and (old_peak == 0 or profit_pct - old_peak >= 0.005):
                             self._log(f"📈 HARVESTER TRAILING: {sym} Peak: {pos['peak_profit']*100:.2f}%")
                     
                     # Exit on 1.5% pullback from peak

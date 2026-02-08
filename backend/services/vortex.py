@@ -3,6 +3,9 @@ import pandas as pd
 import pandas_ta as ta
 from datetime import datetime
 import time
+from backend.core.logging_config import setup_logging
+
+logger = setup_logging("vortex")
 
 class VortexBerserker:
     # Hybrid Swarm Slot Architecture
@@ -37,7 +40,7 @@ class VortexBerserker:
             'options': {'defaultType': 'spot'}
         })
 
-    async def fetch_global_market(self):
+    async def fetch_global_market(self) -> list:
         """Global Market Scanner: Entire MEXC USDT market."""
         try:
             all_tickers = await self.exchange.fetch_tickers()
@@ -71,7 +74,7 @@ class VortexBerserker:
             self._log(f"⚠️ MARKET SCAN ERROR: {e}")
             return []
     
-    async def get_candle_data(self, symbol):
+    async def get_candle_data(self, symbol: str) -> dict:
         """Fetch 1-minute candle data for momentum detection."""
         try:
             ohlcv = await self.exchange.fetch_ohlcv(symbol, timeframe='1m', limit=2)
@@ -221,8 +224,8 @@ class VortexBerserker:
         except Exception as e:
             self._log(f"❌ EXIT FAILED: {e}")
 
-    def _log(self, msg):
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
+    def _log(self, msg: str) -> None:
+        logger.info(msg)
 
     async def start(self):
         self._log("🌊 HYBRID SWARM ACTIVE: 4 PIRANHAS // 3 HARVESTERS")

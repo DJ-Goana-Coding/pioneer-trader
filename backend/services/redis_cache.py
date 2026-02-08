@@ -6,6 +6,9 @@ import json
 import redis
 from typing import Optional, Any, Dict
 from datetime import datetime
+from backend.core.logging_config import setup_logging
+
+logger = setup_logging("redis_cache")
 
 class RedisCache:
     def __init__(self):
@@ -17,7 +20,7 @@ class RedisCache:
     def _connect(self):
         """Initialize Redis connection"""
         if not self.enabled:
-            print("📴 REDIS: Disabled via REDIS_ENABLED=False")
+            logger.info("📴 REDIS: Disabled via REDIS_ENABLED=False")
             return
             
         try:
@@ -30,9 +33,9 @@ class RedisCache:
             self.client.ping()
             # Log connection without exposing full URL
             host_info = self.redis_url.split('@')[-1] if '@' in self.redis_url else 'localhost:6379'
-            print(f"🔴 REDIS: Connected to {host_info}")
+            logger.info(f"🔴 REDIS: Connected to {host_info}")
         except Exception as e:
-            print(f"⚠️ REDIS: Connection failed - {e}. Running in memory-only mode.")
+            logger.warning(f"⚠️ REDIS: Connection failed - {e}. Running in memory-only mode.")
             self.client = None
 
     def is_connected(self) -> bool:
@@ -42,7 +45,7 @@ class RedisCache:
         try:
             self.client.ping()
             return True
-        except:
+        except Exception:
             return False
 
     # ═══════════════════════════════════════════════════════════
@@ -62,7 +65,7 @@ class RedisCache:
             self.client.expire("vortex:portfolio", 3600)  # 1 hour TTL
             return True
         except Exception as e:
-            print(f"⚠️ REDIS: Failed to save portfolio - {e}")
+            logger.warning(f"⚠️ REDIS: Failed to save portfolio - {e}")
             return False
 
     def get_portfolio_state(self) -> Optional[Dict[str, Any]]:
@@ -83,7 +86,7 @@ class RedisCache:
                     result[k] = v
             return result
         except Exception as e:
-            print(f"⚠️ REDIS: Failed to get portfolio - {e}")
+            logger.warning(f"⚠️ REDIS: Failed to get portfolio - {e}")
             return None
 
     # ═══════════════════════════════════════════════════════════
@@ -96,7 +99,8 @@ class RedisCache:
             return
         try:
             self.client.hset("vortex:peaks", symbol, str(price))
-        except:
+        except Exception as e:
+            logger.warning(f"⚠️ REDIS: Failed to set peak price - {e}")
             pass
 
     def get_peak_price(self, symbol: str) -> Optional[float]:
@@ -106,7 +110,7 @@ class RedisCache:
         try:
             val = self.client.hget("vortex:peaks", symbol)
             return float(val) if val else None
-        except:
+        except Exception:
             return None
 
     def get_all_peaks(self) -> Dict[str, float]:
@@ -116,7 +120,7 @@ class RedisCache:
         try:
             data = self.client.hgetall("vortex:peaks")
             return {k: float(v) for k, v in data.items()}
-        except:
+        except Exception:
             return {}
 
     def clear_peak(self, symbol: str):
@@ -125,7 +129,8 @@ class RedisCache:
             return
         try:
             self.client.hdel("vortex:peaks", symbol)
-        except:
+        except Exception as e:
+            logger.warning(f"⚠️ REDIS: Failed to clear peak - {e}")
             pass
 
     # ═══════════════════════════════════════════════════════════
@@ -140,7 +145,8 @@ class RedisCache:
             trade['timestamp'] = datetime.utcnow().isoformat()
             self.client.lpush("vortex:trades", json.dumps(trade))
             self.client.ltrim("vortex:trades", 0, 99)  # Keep last 100 trades
-        except:
+        except Exception as e:
+            logger.warning(f"⚠️ REDIS: Failed to log trade - {e}")
             pass
 
     def get_trade_history(self, limit: int = 20) -> list:
@@ -150,7 +156,7 @@ class RedisCache:
         try:
             trades = self.client.lrange("vortex:trades", 0, limit - 1)
             return [json.loads(t) for t in trades]
-        except:
+        except Exception:
             return []
 
     # ═══════════════════════════════════════════════════════════
@@ -163,7 +169,8 @@ class RedisCache:
             return
         try:
             self.client.setex(f"ticker:{symbol}", ttl, json.dumps(data))
-        except:
+        except Exception as e:
+            logger.warning(f"⚠️ REDIS: Failed to cache ticker - {e}")
             pass
 
     def get_cached_ticker(self, symbol: str) -> Optional[Dict[str, Any]]:
@@ -173,7 +180,7 @@ class RedisCache:
         try:
             data = self.client.get(f"ticker:{symbol}")
             return json.loads(data) if data else None
-        except:
+        except Exception:
             return None
 
 

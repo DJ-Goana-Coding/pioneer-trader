@@ -13,6 +13,11 @@ from backend.core.logging_config import setup_logging
 logger = setup_logging("vortex")
 
 class VortexBerserker:
+    # Wing Type Constants
+    WING_PIRANHA = 'piranha'
+    WING_HARVESTER = 'harvester'
+    WING_SNIPER = 'sniper'
+    
     def __init__(self):
         # 1. FLEET CONFIGURATION (2/4/1 Split)
         self.PIRANHA_SLOTS = [1, 2]       # 0.4% Scalps
@@ -66,9 +71,8 @@ class VortexBerserker:
                     if t.get('percentage', 0) > 2.0 and t.get('last', 0) > t.get('open', 0):
                         candidates.append({'symbol': s, 'price': t['last'], 'change': t['percentage']})
                     
-                    # Sniper Filter (Heavy Compute - Limit to Top 10 Vol)
-                    # Note: In prod, we fetch OHLCV only for high-potential targets
-                    # This is a simplified logic for the 2s pulse
+                    # Sniper Filter: High-momentum targets for precision entry
+                    # Criteria: >5% change and >$5M volume indicates strong conviction
                     if t.get('percentage', 0) > 5.0 and t.get('quoteVolume', 0) > 5000000:
                         sniper_targets.append(s)
 
@@ -114,17 +118,17 @@ class VortexBerserker:
         # Check Piranha slots (1-2)
         for slot in self.PIRANHA_SLOTS:
             if slot not in occupied_slots:
-                return ('piranha', slot)
+                return (self.WING_PIRANHA, slot)
         
         # Check Harvester slots (3-6)
         for slot in self.HARVESTER_SLOTS:
             if slot not in occupied_slots:
-                return ('harvester', slot)
+                return (self.WING_HARVESTER, slot)
         
         # Check Sniper slot (7)
         for slot in self.SNIPER_SLOT:
             if slot not in occupied_slots:
-                return ('sniper', slot)
+                return (self.WING_SNIPER, slot)
         
         return (None, None)
     
@@ -139,11 +143,14 @@ class VortexBerserker:
             if not movers and not potential_snipers:
                 return
             
+            # Build set of active symbols for O(1) lookup
+            active_symbols = {t['symbol'] for t in self.active_trades.values()}
+            
             # Check Sniper Slot (7) - highest priority
             if 7 not in self.active_trades and potential_snipers:
                 for target in potential_snipers[:3]:  # Check top 3
                     if await self._analyze_sniper(target):
-                        await self._fill_slot(7, target, "sniper")
+                        await self._fill_slot(7, target, self.WING_SNIPER)
                         return  # One entry per cycle
             
             # Fill Piranha/Harvester slots
@@ -154,8 +161,8 @@ class VortexBerserker:
                 empty_slots = [i for i in range(1, 7) if i not in self.active_trades]
                 if empty_slots:
                     slot = empty_slots[0]
-                    w = "piranha" if slot in self.PIRANHA_SLOTS else "harvester"
-                    if m['symbol'] not in [t['symbol'] for t in self.active_trades.values()]:
+                    w = self.WING_PIRANHA if slot in self.PIRANHA_SLOTS else self.WING_HARVESTER
+                    if m['symbol'] not in active_symbols:
                         await self._fill_slot(slot, m['symbol'], w, m['price'])
                         return  # One entry per cycle
                         
@@ -181,7 +188,7 @@ class VortexBerserker:
             amount = self.base_stake / price
             order = await self.mexc.create_market_buy_order(symbol, amount)
             
-            wing_emoji = "🦈" if wing == 'piranha' else ("🌾" if wing == 'harvester' else "🎯")
+            wing_emoji = "🦈" if wing == self.WING_PIRANHA else ("🌾" if wing == self.WING_HARVESTER else "🎯")
             self._log(f"⚔️ {wing.upper()} (Slot {slot}) attacking {symbol} @ {price}")
             
             self.active_trades[slot] = {
@@ -228,21 +235,21 @@ class VortexBerserker:
                 profit_pct = (curr - trade['entry']) / trade['entry']
                 
                 # SNIPER: Fixed 1.5% TP / 1.5% SL
-                if trade['wing'] == "sniper":
+                if trade['wing'] == self.WING_SNIPER:
                     if curr >= trade['entry'] * 1.015:
                         await self._execute_sell(slot, trade, "🎯 SNIPER HEADSHOT")
                     elif curr <= trade['entry'] * 0.985:
                         await self._execute_sell(slot, trade, "💀 SNIPER MISS")
 
                 # PIRANHA: 0.4% Scalp
-                elif trade['wing'] == "piranha":
+                elif trade['wing'] == self.WING_PIRANHA:
                     if profit_pct >= self.PIRANHA_PROFIT_TARGET:
                         await self._execute_sell(slot, trade, f"💰 PIRANHA BITE (Slot {slot})")
                     elif profit_pct <= -self.STOP_LOSS_PCT:
                         await self._execute_sell(slot, trade, f"🛡️ PIRANHA STOP (Slot {slot})")
                 
                 # HARVESTER: Trailing Grid
-                elif trade['wing'] == "harvester":
+                elif trade['wing'] == self.WING_HARVESTER:
                     # Update peak profit
                     if profit_pct > trade['peak_profit']:
                         old_peak = trade['peak_profit']
@@ -331,12 +338,13 @@ class VortexBerserker:
         except Exception as e:
             logger.debug(f"Airgap write failed: {e}")
         
-        # 2. HUGGING FACE PUSH (Async wrapper needed in prod)
+        # 2. HUGGING FACE PUSH
         if self.hf_token and self.hf_repo:
+            import tempfile
+            tmp_path = None
             try:
                 # Create a temporary file for upload
                 temp_data = json.dumps(trade_data).encode()
-                import tempfile
                 with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.json') as tmp:
                     tmp.write(temp_data)
                     tmp_path = tmp.name
@@ -347,11 +355,15 @@ class VortexBerserker:
                     repo_id=self.hf_repo,
                     token=self.hf_token
                 )
-                
-                # Clean up temp file
-                os.unlink(tmp_path)
             except Exception as e:
                 logger.debug(f"⚠️ UPLINK FAIL: {e}")
+            finally:
+                # Ensure cleanup even on exception
+                if tmp_path and os.path.exists(tmp_path):
+                    try:
+                        os.unlink(tmp_path)
+                    except Exception:
+                        pass  # Ignore cleanup errors
 
     def _log(self, msg: str) -> None:
         """Log with T.I.A. signature prefix."""

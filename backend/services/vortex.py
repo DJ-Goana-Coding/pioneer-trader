@@ -1,36 +1,74 @@
 """
-🌊 VORTEX BERSERKER V2 - Unified Fleet Trading Bot
-Fleet Configuration: 2 Piranhas // 4 Harvesters // 1 Sniper (2/4/1)
+🌊 VORTEX BERSERKER V3 - Sovereign Cloud Node
+Fleet Configuration: 10-SLOT ARK FLEET with Bear, Crab, and Banker strategies
+Enhanced with FastAPI Liveness Anchor for Hugging Face deployment
 """
 
 import asyncio
 import time
 import os
 import json
+import base64
+import threading
 from typing import Dict, Optional, Tuple, List
 import ccxt.async_support as ccxt
+from fastapi import FastAPI
+import uvicorn
 
 from backend.core.config import settings
 from backend.core.logging_config import setup_logging
 
 logger = setup_logging("vortex")
 
+# ================================================================
+# LIVENESS ANCHOR - FastAPI Health Server (Port 7860)
+# ================================================================
+liveness_app = FastAPI()
+
+@liveness_app.get("/")
+async def liveness():
+    """Hugging Face liveness endpoint"""
+    return {
+        "status": "ACTIVE",
+        "commander": "Darrell",
+        "fleet": "10-SLOT-VORTEX",
+        "version": "V3-Enhanced"
+    }
+
+@liveness_app.get("/health")
+async def health_check():
+    """Additional health check endpoint"""
+    return {"status": "ok", "fleet": "10-SLOT-ARK"}
+
+def start_liveness():
+    """Start liveness server in background thread"""
+    uvicorn.run(liveness_app, host="0.0.0.0", port=7860, log_level="warning")
+
+# Start liveness server immediately
+threading.Thread(target=start_liveness, daemon=True).start()
+logger.info("[T.I.A.] 🛡️ Liveness Anchor deployed on port 7860")
+
 
 class VortexBerserker:
     """
-    Unified Fleet Trading Bot V2
-    Fleet: 2 Piranhas (0.4% scalps) + 4 Harvesters (0.5% trailing) + 1 Sniper (EMA vol-surge)
+    Sovereign Cloud Node V3 - 10-SLOT ARK FLEET
+    Fleet: 2 Piranhas (scalps) + 3 Harvesters (trailing) + 2 Bears (short) + 2 Crabs (range) + 1 Banker (conservative)
     """
     
-    # FLEET CONFIGURATION (2/4/1)
-    PIRANHA_SLOTS = [1, 2]
-    HARVESTER_SLOTS = [3, 4, 5, 6]
-    SNIPER_SLOT = 7
+    # FLEET CONFIGURATION (10-SLOT ARK)
+    PIRANHA_SLOTS = [1, 2]        # Aggressive scalps (0.4% TP)
+    HARVESTER_SLOTS = [3, 4, 5]   # Trailing profit (0.5% start)
+    BEAR_SLOTS = [6, 7]           # Short positions (profit on drops)
+    CRAB_SLOTS = [8, 9]           # Range trading (buy low, sell high)
+    BANKER_SLOT = 10              # Conservative long-term holds
     
     # CORE CONSTANTS
     PIRANHA_PROFIT_TARGET = 0.004  # 0.4%
     HARVESTER_TRAIL_START = 0.005  # 0.5%
     HARVESTER_PULLBACK_EXIT = 0.015  # 1.5%
+    BEAR_PROFIT_TARGET = 0.008     # 0.8% (profit from drops)
+    CRAB_RANGE_PCT = 0.006         # 0.6% range
+    BANKER_PROFIT_TARGET = 0.020   # 2.0% conservative
     STOP_LOSS_PCT = 0.015  # 1.5%
     SNIPER_TP_PCT = 0.015  # 1.5%
     SNIPER_SL_PCT = 0.015  # 1.5%
@@ -50,8 +88,11 @@ class VortexBerserker:
     INITIAL_BLACKLIST = {'PENGUIN/USDT'}
     
     def __init__(self):
-        """Initialize VortexBerserker"""
-        self._log("🌊 UNIFIED FLEET SYNCHRONIZED: 2 PIRANHAS // 4 HARVESTERS // 1 SNIPER.")
+        """Initialize VortexBerserker with Credential Guard"""
+        self._log("🌊 10-SLOT ARK FLEET SYNCHRONIZED: 2 PIRANHAS // 3 HARVESTERS // 2 BEARS // 2 CRABS // 1 BANKER")
+        
+        # Credential Guard: Auto-generate credentials.json from env var
+        self._setup_google_credentials()
         
         # Exchange (will be initialized in start())
         self.exchange = None
@@ -73,8 +114,35 @@ class VortexBerserker:
         # HuggingFace integration
         self.hf_token = os.getenv("HF_TOKEN", "")
         
-        self._log(f"✅ Fleet Config: {len(self.PIRANHA_SLOTS)} Piranhas, {len(self.HARVESTER_SLOTS)} Harvesters, 1 Sniper")
+        self._log(f"✅ Fleet Config: {len(self.PIRANHA_SLOTS)} Piranhas, {len(self.HARVESTER_SLOTS)} Harvesters, {len(self.BEAR_SLOTS)} Bears, {len(self.CRAB_SLOTS)} Crabs, 1 Banker")
         self._log(f"✅ Pre-blacklisted: {self.blacklisted_symbols}")
+    
+    def _setup_google_credentials(self):
+        """
+        Credential Guard: Detect GOOGLE_CREDENTIALS_B64 and auto-generate credentials.json
+        """
+        try:
+            credentials_b64 = os.getenv("GOOGLE_CREDENTIALS_B64", "")
+            if credentials_b64:
+                # Decode base64 to JSON
+                credentials_json = base64.b64decode(credentials_b64).decode('utf-8')
+                
+                # Write to credentials.json in current directory with secure permissions
+                credentials_path = "credentials.json"
+                with open(credentials_path, 'w') as f:
+                    f.write(credentials_json)
+                
+                # Set secure file permissions (read/write for owner only)
+                os.chmod(credentials_path, 0o600)
+                
+                self._log(f"🔐 Credential Guard: credentials.json generated from GOOGLE_CREDENTIALS_B64")
+                
+                # Set environment variable for Google libraries
+                os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path
+            else:
+                self._log("⚠️ Credential Guard: GOOGLE_CREDENTIALS_B64 not found, skipping credential generation")
+        except Exception as e:
+            self._log(f"⚠️ Credential Guard error: {e}")
     
     def _log(self, msg: str):
         """Log with [T.I.A.] prefix"""
@@ -178,7 +246,7 @@ class VortexBerserker:
     def get_available_slot_type(self) -> Tuple[Optional[str], Optional[int]]:
         """
         Return next available slot
-        Priority: piranha → harvester → sniper
+        Priority: piranha → harvester → bear → crab → banker
         Returns: (wing_type, slot_num) or (None, None) if full
         """
         # Get occupied slots
@@ -194,9 +262,19 @@ class VortexBerserker:
             if slot not in occupied:
                 return ('harvester', slot)
         
-        # Check Sniper slot
-        if self.SNIPER_SLOT not in occupied:
-            return ('sniper', self.SNIPER_SLOT)
+        # Check Bear slots
+        for slot in self.BEAR_SLOTS:
+            if slot not in occupied:
+                return ('bear', slot)
+        
+        # Check Crab slots
+        for slot in self.CRAB_SLOTS:
+            if slot not in occupied:
+                return ('crab', slot)
+        
+        # Check Banker slot
+        if self.BANKER_SLOT not in occupied:
+            return ('banker', self.BANKER_SLOT)
         
         # All slots full
         return (None, None)
@@ -409,8 +487,32 @@ class VortexBerserker:
                     elif profit_pct <= -self.STOP_LOSS_PCT:
                         await self.execute_exit(symbol, qty, f"Stop Loss ({profit_pct*100:.2f}%)")
                 
+                elif wing == 'bear':
+                    # Bear: Short strategy placeholder
+                    # NOTE: Currently using standard long logic with custom profit target
+                    # TODO: Implement actual inverse logic for short positions in future
+                    if profit_pct >= self.BEAR_PROFIT_TARGET:
+                        await self.execute_exit(symbol, qty, f"Bear TP ({profit_pct*100:.2f}%)")
+                    elif profit_pct <= -self.STOP_LOSS_PCT:
+                        await self.execute_exit(symbol, qty, f"Bear SL ({profit_pct*100:.2f}%)")
+                
+                elif wing == 'crab':
+                    # Crab: Range trading - exit on positive range achievement
+                    # Only check positive side for exits, let stop loss handle downside
+                    if profit_pct >= self.CRAB_RANGE_PCT:
+                        await self.execute_exit(symbol, qty, f"Crab Range TP ({profit_pct*100:.2f}%)")
+                    elif profit_pct <= -self.STOP_LOSS_PCT:
+                        await self.execute_exit(symbol, qty, f"Crab SL ({profit_pct*100:.2f}%)")
+                
+                elif wing == 'banker':
+                    # Banker: Conservative long-term - higher profit target, tight stop
+                    if profit_pct >= self.BANKER_PROFIT_TARGET:
+                        await self.execute_exit(symbol, qty, f"Banker TP ({profit_pct*100:.2f}%)")
+                    elif profit_pct <= -self.STOP_LOSS_PCT:
+                        await self.execute_exit(symbol, qty, f"Banker SL ({profit_pct*100:.2f}%)")
+                
                 elif wing == 'sniper':
-                    # Sniper: Fixed 1.5% TP/SL
+                    # Sniper: Fixed 1.5% TP/SL (legacy support)
                     if profit_pct >= self.SNIPER_TP_PCT:
                         await self.execute_exit(symbol, qty, f"Sniper TP ({profit_pct*100:.2f}%)")
                     elif profit_pct <= -self.STOP_LOSS_PCT:

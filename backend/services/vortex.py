@@ -296,9 +296,9 @@ class VortexBerserker:
                     base_currency = symbol.split('/')[0]
                     balance = await self.exchange.fetch_balance()
                     
-                    if base_currency in balance and balance[base_currency].get('total', 0) > 0:
+                    actual_qty = balance.get(base_currency, {}).get('total', 0)
+                    if actual_qty > 0:
                         # Balance exists - force exit
-                        actual_qty = balance[base_currency].get('total', 0)
                         self._log(f"🔄 Balance detected ({actual_qty}), calling force_exit")
                         await self.force_exit(symbol, actual_qty)
                     else:
@@ -367,7 +367,9 @@ class VortexBerserker:
                 if symbol not in tickers:
                     continue
                 
-                current_price = tickers[symbol]['last']
+                current_price = tickers[symbol].get('last')
+                if not current_price:
+                    continue
                 entry_price = position['entry']
                 profit_pct = (current_price - entry_price) / entry_price
                 

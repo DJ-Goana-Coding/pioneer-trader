@@ -183,6 +183,11 @@ class VortexBerserker:
             wing_emoji = "🦈" if wing_type == 'piranha' else "🌾"
             self._log(f"🔥 FILLED: {wing_emoji} Slot {slot_num} | {symbol} @ ${price:.4f}")
         except Exception as e:
+            # Check for error code 10007 (symbol not support api)
+            error_str = str(e)
+            if '10007' in error_str:
+                self.blacklisted_symbols.add(symbol)
+                self._log(f"🚫 BLACKLIST: {symbol} (Error 10007 - Symbol not supported)")
             self._log(f"❌ BUY FAILED: {e}")
 
     async def pulse_monitor(self):

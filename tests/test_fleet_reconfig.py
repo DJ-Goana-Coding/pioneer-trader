@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 import asyncio
 import time
+from datetime import datetime
 from unittest.mock import Mock, AsyncMock, patch
 import ccxt.async_support as ccxt
 

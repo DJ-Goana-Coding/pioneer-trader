@@ -40,8 +40,11 @@ jobs:
           echo "Syncing to Hugging Face..."
           git remote add hf https://huggingface.co/spaces/DJ-Goana-Coding/pioneer-trader || true
           git push hf main --force
-          
-          # Clean up credentials
+      
+      - name: Cleanup credentials
+        if: always()
+        run: |
+          # Always clean up credentials regardless of success or failure
           rm -f ~/.git-credentials
       
       - name: Notify on success

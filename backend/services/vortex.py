@@ -87,6 +87,25 @@ class VortexBerserker:
     # BLACKLIST (Pre-configured problematic symbols)
     INITIAL_BLACKLIST = {'PENGUIN/USDT'}
     
+    # INTELLIGENT STAGNATION FILTER (V3.1.0)
+    MIN_HOLD_HOURS = 4.0  # Never liquidate before 4 hours
+    STAGNATION_LOSS_THRESHOLD = -0.008  # -0.8% loss threshold
+    STAGNATION_BREAKEVEN_MIN = -0.003  # -0.3% for breakeven range
+    STAGNATION_BREAKEVEN_MAX = 0.003  # +0.3% for breakeven range
+    STAGNATION_BREAKEVEN_HOURS = 8.0  # 8 hours for breakeven stagnation
+    
+    # MLOFI GATEKEEPER (V3.1.0)
+    HIGH_LIQUIDITY_THRESHOLD = 50_000_000  # $50M volume
+    MID_LIQUIDITY_THRESHOLD = 10_000_000  # $10M volume
+    MLOFI_STRICT_MIN = 0  # Strict MLOFI > 0 for high liquidity
+    MLOFI_MID_MIN = -0.15  # Allow -0.15 for mid liquidity
+    RSI_OVERSOLD_THRESHOLD = 25  # Extreme oversold RSI
+    
+    # DYNAMIC POSITION SIZING (V3.1.0)
+    POSITION_SIZE_PCT = 0.04  # 4% of equity per trade
+    MIN_POSITION_SIZE = 5.0  # Minimum $5 USDT
+    MAX_POSITION_SIZE = 15.0  # Maximum $15 USDT
+    
     def __init__(self):
         """Initialize VortexBerserker with Credential Guard"""
         self._log("🌊 10-SLOT ARK FLEET SYNCHRONIZED: 2 PIRANHAS // 3 HARVESTERS // 2 BEARS // 2 CRABS // 1 BANKER")
@@ -148,6 +167,299 @@ class VortexBerserker:
         """Log with [T.I.A.] prefix"""
         logger.info(f"[T.I.A.] {msg}")
     
+    # ================================================================
+    # INTELLIGENT STAGNATION FILTER (V3.1.0)
+    # ================================================================
+    
+    async def _get_price_30min_ago(self, symbol: str, current_price: float) -> Optional[float]:
+        """
+        Get price from 30 minutes ago for momentum analysis.
+        Uses 5-minute candles, so 30 minutes ago = 6 candles back.
+        
+        Returns:
+            Price from 30 minutes ago, or None if data unavailable
+        """
+        try:
+            candles = await self.get_candle_data(symbol)
+            if not candles or len(candles) < 7:
+                # Not enough data, return None
+                return None
+            
+            # Get the closing price from 6 candles ago (30 minutes)
+            # candles[-1] is current, candles[-7] is 30 minutes ago
+            price_30min_ago = candles[-7][4]  # Index 4 is the close price
+            return price_30min_ago
+            
+        except Exception as e:
+            self._log(f"⚠️ Error getting 30-min price for {symbol}: {e}")
+            return None
+    
+    async def _showing_recovery_momentum(self, symbol: str, current_price: float, entry_price: float) -> bool:
+        """
+        Check if price is recovering (comparing current to 30-min-ago price).
+        
+        Returns:
+            True if price is trending upward, False otherwise
+        """
+        try:
+            price_30min_ago = await self._get_price_30min_ago(symbol, current_price)
+            
+            if price_30min_ago is None:
+                # No data available - assume no recovery
+                self._log(f"🔍 {symbol}: No 30-min price data, assuming no recovery")
+                return False
+            
+            # Calculate momentum (positive = recovering)
+            momentum_pct = ((current_price - price_30min_ago) / price_30min_ago) * 100
+            
+            # Consider recovery if momentum is positive
+            is_recovering = momentum_pct > 0
+            
+            if is_recovering:
+                self._log(f"📈 {symbol}: Recovery momentum detected (+{momentum_pct:.3f}% over 30min)")
+            else:
+                self._log(f"📉 {symbol}: No recovery momentum ({momentum_pct:.3f}% over 30min)")
+            
+            return is_recovering
+            
+        except Exception as e:
+            self._log(f"⚠️ Error checking recovery momentum for {symbol}: {e}")
+            return False
+    
+    async def should_liquidate_stagnant(self, symbol: str, entry_time: float, entry_price: float, 
+                                       current_price: float) -> Tuple[bool, str]:
+        """
+        Intelligent stagnation detection - only liquidate truly dead trades.
+        
+        Rules:
+        1. Never liquidate before 4 hours
+        2. Liquidate if loss > 0.8% AND no recovery momentum (price declining over last 30 min)
+        3. Extended hold for near-breakeven positions (free up capital after 8 hours if -0.3% < profit < +0.3%)
+        4. NEVER force-sell positions showing recovery signs
+        
+        Returns:
+            Tuple of (should_liquidate: bool, reason: str)
+        """
+        current_hours = (time.time() - entry_time) / 3600
+        
+        # Rule 1: Never liquidate before 4 hours
+        if current_hours < self.MIN_HOLD_HOURS:
+            return (False, "")
+        
+        loss_pct = ((current_price - entry_price) / entry_price)
+        
+        # Rule 2: Critical loss threshold with momentum check
+        if loss_pct < self.STAGNATION_LOSS_THRESHOLD:
+            # Check recovery momentum
+            has_recovery = await self._showing_recovery_momentum(symbol, current_price, entry_price)
+            
+            if not has_recovery:
+                reason = f"Stagnation: Loss {loss_pct*100:.2f}% with no recovery ({current_hours:.1f}h)"
+                self._log(f"🚨 {symbol}: {reason}")
+                return (True, reason)
+            else:
+                self._log(f"⏳ {symbol}: Loss {loss_pct*100:.2f}% but showing recovery - holding")
+                return (False, "")
+        
+        # Rule 3: Free up capital from dead sideways trades
+        if (self.STAGNATION_BREAKEVEN_MIN < loss_pct < self.STAGNATION_BREAKEVEN_MAX and 
+            current_hours > self.STAGNATION_BREAKEVEN_HOURS):
+            reason = f"Stagnation: Sideways {loss_pct*100:.2f}% for {current_hours:.1f}h"
+            self._log(f"⏹️ {symbol}: {reason}")
+            return (True, reason)
+        
+        return (False, "")
+    
+    # ================================================================
+    # CONTEXT-AWARE MLOFI GATEKEEPER (V3.1.0)
+    # ================================================================
+    
+    async def _get_price_momentum(self, symbol: str) -> Tuple[Optional[float], Optional[float]]:
+        """
+        Calculate short-term price momentum (1h and 4h price change).
+        
+        Returns:
+            Tuple of (momentum_1h_pct, momentum_4h_pct) or (None, None) if data unavailable
+        """
+        try:
+            candles = await self.get_candle_data(symbol)
+            if not candles or len(candles) < 49:
+                return (None, None)
+            
+            current_price = candles[-1][4]  # Latest close price
+            
+            # 1-hour momentum (12 candles ago at 5-minute intervals)
+            if len(candles) >= 13:
+                price_1h_ago = candles[-13][4]
+                momentum_1h = ((current_price - price_1h_ago) / price_1h_ago) * 100
+            else:
+                momentum_1h = None
+            
+            # 4-hour momentum (48 candles ago at 5-minute intervals)
+            if len(candles) >= 49:
+                price_4h_ago = candles[-49][4]
+                momentum_4h = ((current_price - price_4h_ago) / price_4h_ago) * 100
+            else:
+                momentum_4h = None
+            
+            return (momentum_1h, momentum_4h)
+            
+        except Exception as e:
+            self._log(f"⚠️ Error calculating price momentum for {symbol}: {e}")
+            return (None, None)
+    
+    async def _check_price_momentum_positive(self, symbol: str) -> bool:
+        """
+        Check if short-term price momentum is positive.
+        Returns True if both 1h and 4h momentum are positive.
+        """
+        try:
+            momentum_1h, momentum_4h = await self._get_price_momentum(symbol)
+            
+            if momentum_1h is None or momentum_4h is None:
+                # No data available - be conservative
+                return False
+            
+            # Both should be positive for low-liquidity pairs
+            is_positive = momentum_1h > 0 and momentum_4h > 0
+            
+            if is_positive:
+                self._log(f"✅ {symbol}: Positive momentum (1h: +{momentum_1h:.2f}%, 4h: +{momentum_4h:.2f}%)")
+            else:
+                self._log(f"❌ {symbol}: Negative momentum (1h: {momentum_1h:.2f}%, 4h: {momentum_4h:.2f}%)")
+            
+            return is_positive
+            
+        except Exception as e:
+            self._log(f"⚠️ Error checking price momentum for {symbol}: {e}")
+            return False
+    
+    async def is_buy_allowed(self, symbol: str, volume_24h: float, candles: Optional[list] = None) -> Tuple[bool, str]:
+        """
+        Context-aware MLOFI gatekeeper - adapts to liquidity conditions.
+        
+        Rules:
+        - High liquidity (>$50M volume): Strict MLOFI > 0 requirement (not implemented - no MLOFI data)
+        - Mid liquidity ($10M-$50M): Allow if RSI < 25 (extreme oversold)
+        - Low liquidity (<$10M): Use price momentum instead
+        
+        Note: MLOFI calculation not implemented yet, using simplified logic
+        
+        Returns:
+            Tuple of (allowed: bool, reason: str)
+        """
+        try:
+            # Fetch candles if not provided
+            if candles is None:
+                candles = await self.get_candle_data(symbol)
+            
+            if not candles or len(candles) < 14:
+                return (False, f"Insufficient candle data")
+            
+            # Calculate RSI (14-period)
+            closes = [candle[4] for candle in candles[-14:]]
+            rsi = self._calculate_rsi(closes, period=14)
+            
+            # High-liquidity pairs: Would require MLOFI > 0 (not implemented)
+            if volume_24h > self.HIGH_LIQUIDITY_THRESHOLD:
+                # Since we don't have MLOFI, use RSI as proxy
+                if rsi is not None and rsi < 30:
+                    self._log(f"💎 {symbol}: High liquidity, RSI {rsi:.1f} (oversold) - ALLOWED")
+                    return (True, f"High liquidity with RSI {rsi:.1f}")
+                else:
+                    self._log(f"⛔ {symbol}: High liquidity, RSI {rsi:.1f if rsi else 'N/A'} - BLOCKED")
+                    return (False, f"High liquidity without oversold signal")
+            
+            # Mid-liquidity: Allow exceptions for extreme oversold
+            if volume_24h > self.MID_LIQUIDITY_THRESHOLD:
+                if rsi is not None and rsi < self.RSI_OVERSOLD_THRESHOLD:
+                    self._log(f"💎 {symbol}: Mid liquidity, extreme oversold RSI {rsi:.1f} - ALLOWED")
+                    return (True, f"Mid liquidity with extreme oversold RSI {rsi:.1f}")
+                else:
+                    self._log(f"⛔ {symbol}: Mid liquidity, RSI {rsi:.1f if rsi else 'N/A'} - BLOCKED")
+                    return (False, f"Mid liquidity without extreme oversold")
+            
+            # Low-liquidity: Use price momentum instead
+            momentum_positive = await self._check_price_momentum_positive(symbol)
+            if momentum_positive:
+                self._log(f"💎 {symbol}: Low liquidity with positive momentum - ALLOWED")
+                return (True, "Low liquidity with positive momentum")
+            else:
+                self._log(f"⛔ {symbol}: Low liquidity without positive momentum - BLOCKED")
+                return (False, "Low liquidity without positive momentum")
+            
+        except Exception as e:
+            self._log(f"⚠️ Error in MLOFI gatekeeper for {symbol}: {e}")
+            return (False, f"Error: {str(e)}")
+    
+    def _calculate_rsi(self, prices: list, period: int = 14) -> Optional[float]:
+        """
+        Calculate RSI (Relative Strength Index).
+        
+        Args:
+            prices: List of closing prices (at least period+1 length)
+            period: RSI period (default 14)
+        
+        Returns:
+            RSI value (0-100) or None if insufficient data
+        """
+        try:
+            if len(prices) < period + 1:
+                return None
+            
+            # Calculate price changes
+            deltas = [prices[i] - prices[i-1] for i in range(1, len(prices))]
+            
+            # Separate gains and losses
+            gains = [d if d > 0 else 0 for d in deltas]
+            losses = [-d if d < 0 else 0 for d in deltas]
+            
+            # Calculate average gain and loss
+            avg_gain = sum(gains[-period:]) / period
+            avg_loss = sum(losses[-period:]) / period
+            
+            # Avoid division by zero
+            if avg_loss == 0:
+                return 100.0
+            
+            # Calculate RS and RSI
+            rs = avg_gain / avg_loss
+            rsi = 100 - (100 / (1 + rs))
+            
+            return rsi
+            
+        except Exception as e:
+            self._log(f"⚠️ Error calculating RSI: {e}")
+            return None
+    
+    # ================================================================
+    # DYNAMIC POSITION SIZING (V3.1.0)
+    # ================================================================
+    
+    def calculate_position_size(self, total_equity: float) -> float:
+        """
+        Calculate safe position size based on remaining capital.
+        
+        Rules:
+        - Max 4% of total equity per trade
+        - Minimum position size: $5 USDT
+        - Maximum position size: $15 USDT (even if capital grows)
+        
+        Args:
+            total_equity: Current total equity in USDT
+        
+        Returns:
+            Position size in USDT
+        """
+        max_stake = total_equity * self.POSITION_SIZE_PCT
+        
+        # Enforce boundaries
+        stake = max(self.MIN_POSITION_SIZE, min(max_stake, self.MAX_POSITION_SIZE))
+        
+        self._log(f"💰 Position sizing: Equity=${total_equity:.2f} → Stake=${stake:.2f} (4% rule)")
+        
+        return stake
+    
     async def start(self):
         """Main loop"""
         self._log("🚀 Starting VortexBerserker main loop...")
@@ -183,10 +495,17 @@ class VortexBerserker:
                     
                     symbol = ticker['symbol']
                     price = ticker['price']
+                    volume_24h = ticker['volume']
                     
                     # Get candle data
                     candles = await self.get_candle_data(symbol)
                     if candles is None:
+                        continue
+                    
+                    # MLOFI Gatekeeper (V3.1.0): Context-aware filtering
+                    buy_allowed, reason = await self.is_buy_allowed(symbol, volume_24h, candles)
+                    if not buy_allowed:
+                        self._log(f"🚫 {symbol}: MLOFI gatekeeper blocked - {reason}")
                         continue
                     
                     # Execute order
@@ -298,21 +617,25 @@ class VortexBerserker:
     
     async def execute_order(self, symbol: str, price: float, wing: str, slot: int):
         """
-        Execute buy order
+        Execute buy order with dynamic position sizing
         Handle error 10007 blacklist
         """
         try:
-            # Calculate quantity
-            stake = settings.VORTEX_STAKE_USDT
+            # Dynamic position sizing (V3.1.0)
+            # Use total_equity if available, otherwise fall back to wallet_balance or config
+            equity = self.total_equity if self.total_equity > 0 else (
+                self.wallet_balance if self.wallet_balance > 0 else 100.0  # Default $100 capital
+            )
+            stake = self.calculate_position_size(equity)
             qty = stake / price
             
             # Execute buy (always call exchange method for error handling/mocking)
             order = await self.exchange.create_market_buy_order(symbol, qty)
             
             if settings.EXECUTION_MODE != "PAPER":
-                self._log(f"✅ BUY {symbol} | Wing: {wing} | Slot: {slot} | Qty: {qty:.6f}")
+                self._log(f"✅ BUY {symbol} | Wing: {wing} | Slot: {slot} | Qty: {qty:.6f} | Stake: ${stake:.2f}")
             else:
-                self._log(f"📝 PAPER BUY {symbol} | Wing: {wing} | Slot: {slot}")
+                self._log(f"📝 PAPER BUY {symbol} | Wing: {wing} | Slot: {slot} | Stake: ${stake:.2f}")
             
             # Track position
             self.active_slots[symbol] = {
@@ -456,10 +779,20 @@ class VortexBerserker:
                 if not current_price:
                     continue
                 entry_price = position['entry']
+                entry_time = position['time']
                 profit_pct = (current_price - entry_price) / entry_price
                 
                 wing = position['wing']
                 qty = position['qty']
+                
+                # Intelligent Stagnation Filter (V3.1.0)
+                # Check for stagnant positions before wing-specific logic
+                should_liquidate, stagnation_reason = await self.should_liquidate_stagnant(
+                    symbol, entry_time, entry_price, current_price
+                )
+                if should_liquidate:
+                    await self.execute_exit(symbol, qty, stagnation_reason)
+                    continue  # Skip wing-specific logic
                 
                 # Wing-specific exit logic
                 if wing == 'piranha':

@@ -54,16 +54,31 @@ async def get_telemetry(current_user: str = Depends(get_current_admin)):
     # Get slot allocation counts
     piranha_count = sum(1 for pos in vortex.active_slots.values() if pos.get('wing') == 'piranha')
     harvester_count = sum(1 for pos in vortex.active_slots.values() if pos.get('wing') == 'harvester')
+    bear_count = sum(1 for pos in vortex.active_slots.values() if pos.get('wing') == 'bear')
+    crab_count = sum(1 for pos in vortex.active_slots.values() if pos.get('wing') == 'crab')
+    banker_count = sum(1 for pos in vortex.active_slots.values() if pos.get('wing') == 'banker')
     sniper_count = sum(1 for pos in vortex.active_slots.values() if pos.get('wing') == 'sniper')
     
-    # Pluralize wing names
-    piranha_label = "Piranha" if piranha_count == 1 else "Piranhas"
-    harvester_label = "Harvester" if harvester_count == 1 else "Harvesters"
-    sniper_label = "Sniper" if sniper_count == 1 else "Snipers"
+    # Build fleet allocation string
+    fleet_parts = []
+    if piranha_count > 0:
+        fleet_parts.append(f"{piranha_count} {'Piranha' if piranha_count == 1 else 'Piranhas'}")
+    if harvester_count > 0:
+        fleet_parts.append(f"{harvester_count} {'Harvester' if harvester_count == 1 else 'Harvesters'}")
+    if bear_count > 0:
+        fleet_parts.append(f"{bear_count} {'Bear' if bear_count == 1 else 'Bears'}")
+    if crab_count > 0:
+        fleet_parts.append(f"{crab_count} {'Crab' if crab_count == 1 else 'Crabs'}")
+    if banker_count > 0:
+        fleet_parts.append(f"{banker_count} Banker{'s' if banker_count > 1 else ''}")
+    if sniper_count > 0:
+        fleet_parts.append(f"{sniper_count} {'Sniper' if sniper_count == 1 else 'Snipers'}")
+    
+    fleet_allocation = " + ".join(fleet_parts) if fleet_parts else "No active positions"
     
     return {
         "status": "Active",
-        "fleet_allocation": f"{piranha_count} {piranha_label} + {harvester_count} {harvester_label} + {sniper_count} {sniper_label}",
+        "fleet_allocation": fleet_allocation,
         "wallet": f"${vortex.wallet_balance:.2f}" if hasattr(vortex, 'wallet_balance') else "N/A",
         "equity": f"${vortex.total_equity:.2f}" if hasattr(vortex, 'total_equity') else "N/A",
         "slots": vortex.slot_status if hasattr(vortex, 'slot_status') else {},

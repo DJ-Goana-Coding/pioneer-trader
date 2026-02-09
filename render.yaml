@@ -16,4 +16,4 @@ services:
       - key: EXECUTION_MODE
         value: LIVE
       - key: PORT
-        value: 10000
+        value: 7860

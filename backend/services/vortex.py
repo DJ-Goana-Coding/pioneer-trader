@@ -353,11 +353,11 @@ class VortexBerserker:
             if candles is None:
                 candles = await self.get_candle_data(symbol)
             
-            if not candles or len(candles) < 14:
+            if not candles or len(candles) < 15:
                 return (False, f"Insufficient candle data")
             
-            # Calculate RSI (14-period)
-            closes = [candle[4] for candle in candles[-14:]]
+            # Calculate RSI (14-period, need 15 candles minimum)
+            closes = [candle[4] for candle in candles[-15:]]
             rsi = self._calculate_rsi(closes, period=14)
             
             # High-liquidity pairs: Would require MLOFI > 0 (not implemented)
@@ -367,7 +367,8 @@ class VortexBerserker:
                     self._log(f"💎 {symbol}: High liquidity, RSI {rsi:.1f} (oversold) - ALLOWED")
                     return (True, f"High liquidity with RSI {rsi:.1f}")
                 else:
-                    self._log(f"⛔ {symbol}: High liquidity, RSI {rsi:.1f if rsi else 'N/A'} - BLOCKED")
+                    rsi_str = f"{rsi:.1f}" if rsi is not None else "N/A"
+                    self._log(f"⛔ {symbol}: High liquidity, RSI {rsi_str} - BLOCKED")
                     return (False, f"High liquidity without oversold signal")
             
             # Mid-liquidity: Allow exceptions for extreme oversold
@@ -376,7 +377,8 @@ class VortexBerserker:
                     self._log(f"💎 {symbol}: Mid liquidity, extreme oversold RSI {rsi:.1f} - ALLOWED")
                     return (True, f"Mid liquidity with extreme oversold RSI {rsi:.1f}")
                 else:
-                    self._log(f"⛔ {symbol}: Mid liquidity, RSI {rsi:.1f if rsi else 'N/A'} - BLOCKED")
+                    rsi_str = f"{rsi:.1f}" if rsi is not None else "N/A"
+                    self._log(f"⛔ {symbol}: Mid liquidity, RSI {rsi_str} - BLOCKED")
                     return (False, f"Mid liquidity without extreme oversold")
             
             # Low-liquidity: Use price momentum instead

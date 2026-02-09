@@ -19,6 +19,21 @@ jobs:
         with:
           fetch-depth: 0
       
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+            echo "✅ Dependencies installed successfully"
+          else
+            echo "❌ requirements.txt not found!"
+            exit 1
+          fi
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -37,6 +52,13 @@ jobs:
           echo "https://DJ-Goana-Coding:${HF_TOKEN}@huggingface.co" > ~/.git-credentials
           
           # Sync to Hugging Face Spaces
+          echo "🚀 Syncing Python trading bot to Hugging Face Spaces..."
+          if [ -n "$HF_TOKEN" ] && [ -n "$HF_USERNAME" ] && [ -n "$HF_REPO_NAME" ]; then
+            git push https://$HF_USERNAME:$HF_TOKEN@huggingface.co/spaces/$HF_USERNAME/$HF_REPO_NAME main --force-with-lease
+            echo "✅ Successfully synced to Hugging Face!"
+          else
+            echo "⚠️ Hugging Face credentials not configured. Skipping sync."
+          fi
           echo "Syncing to Hugging Face..."
           git remote add hf https://huggingface.co/spaces/DJ-Goana-Coding/pioneer-trader || true
           git push hf main --force

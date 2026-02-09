@@ -1,6 +1,6 @@
 """
-🌊 VORTEX BERSERKER - Hybrid Swarm Trading Bot
-Fleet Configuration: 3 Piranhas // 4 Harvesters
+🌊 VORTEX BERSERKER V2 - Unified Fleet Trading Bot
+Fleet Configuration: 2 Piranhas // 4 Harvesters // 1 Sniper (2/4/1)
 """
 
 import asyncio
@@ -18,19 +18,22 @@ logger = setup_logging("vortex")
 
 class VortexBerserker:
     """
-    Hybrid Swarm Trading Bot
-    Fleet: 3 Piranhas (0.4% scalps) + 4 Harvesters (0.5% trailing)
+    Unified Fleet Trading Bot V2
+    Fleet: 2 Piranhas (0.4% scalps) + 4 Harvesters (0.5% trailing) + 1 Sniper (EMA vol-surge)
     """
     
-    # FLEET CONFIGURATION (3/4)
-    PIRANHA_SLOTS = [1, 2, 3]
-    HARVESTER_SLOTS = [4, 5, 6, 7]
+    # FLEET CONFIGURATION (2/4/1)
+    PIRANHA_SLOTS = [1, 2]
+    HARVESTER_SLOTS = [3, 4, 5, 6]
+    SNIPER_SLOT = 7
     
     # CORE CONSTANTS
     PIRANHA_PROFIT_TARGET = 0.004  # 0.4%
     HARVESTER_TRAIL_START = 0.005  # 0.5%
     HARVESTER_PULLBACK_EXIT = 0.015  # 1.5%
     STOP_LOSS_PCT = 0.015  # 1.5%
+    SNIPER_TP_PCT = 0.015  # 1.5%
+    SNIPER_SL_PCT = 0.015  # 1.5%
     POST_BUY_COOLDOWN = 5.0  # 5 seconds
     BASE_SCAN_INTERVAL = 2.0  # 2 seconds
     
@@ -48,7 +51,7 @@ class VortexBerserker:
     
     def __init__(self):
         """Initialize VortexBerserker"""
-        self._log("🌊 HYBRID SWARM RECONFIGURED: 3 PIRANHAS // 4 HARVESTERS.")
+        self._log("🌊 UNIFIED FLEET SYNCHRONIZED: 2 PIRANHAS // 4 HARVESTERS // 1 SNIPER.")
         
         # Exchange (will be initialized in start())
         self.exchange = None
@@ -70,7 +73,7 @@ class VortexBerserker:
         # HuggingFace integration
         self.hf_token = os.getenv("HF_TOKEN", "")
         
-        self._log(f"✅ Fleet Config: {len(self.PIRANHA_SLOTS)} Piranhas, {len(self.HARVESTER_SLOTS)} Harvesters")
+        self._log(f"✅ Fleet Config: {len(self.PIRANHA_SLOTS)} Piranhas, {len(self.HARVESTER_SLOTS)} Harvesters, 1 Sniper")
         self._log(f"✅ Pre-blacklisted: {self.blacklisted_symbols}")
     
     def _log(self, msg: str):
@@ -175,7 +178,7 @@ class VortexBerserker:
     def get_available_slot_type(self) -> Tuple[Optional[str], Optional[int]]:
         """
         Return next available slot
-        Priority: piranha → harvester
+        Priority: piranha → harvester → sniper
         Returns: (wing_type, slot_num) or (None, None) if full
         """
         # Get occupied slots
@@ -190,6 +193,10 @@ class VortexBerserker:
         for slot in self.HARVESTER_SLOTS:
             if slot not in occupied:
                 return ('harvester', slot)
+        
+        # Check Sniper slot
+        if self.SNIPER_SLOT not in occupied:
+            return ('sniper', self.SNIPER_SLOT)
         
         # All slots full
         return (None, None)
@@ -401,6 +408,13 @@ class VortexBerserker:
                             await self.execute_exit(symbol, qty, f"Harvester Pullback ({profit_pct*100:.2f}%)")
                     elif profit_pct <= -self.STOP_LOSS_PCT:
                         await self.execute_exit(symbol, qty, f"Stop Loss ({profit_pct*100:.2f}%)")
+                
+                elif wing == 'sniper':
+                    # Sniper: Fixed 1.5% TP/SL
+                    if profit_pct >= self.SNIPER_TP_PCT:
+                        await self.execute_exit(symbol, qty, f"Sniper TP ({profit_pct*100:.2f}%)")
+                    elif profit_pct <= -self.SNIPER_SL_PCT:
+                        await self.execute_exit(symbol, qty, f"Sniper SL ({profit_pct*100:.2f}%)")
         
         except Exception as e:
             self._log(f"⚠️ pulse_monitor error: {e}")

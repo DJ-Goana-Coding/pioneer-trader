@@ -56,9 +56,14 @@ async def get_telemetry(current_user: str = Depends(get_current_admin)):
     harvester_count = sum(1 for pos in vortex.active_slots.values() if pos.get('wing') == 'harvester')
     sniper_count = sum(1 for pos in vortex.active_slots.values() if pos.get('wing') == 'sniper')
     
+    # Pluralize wing names
+    piranha_label = "Piranha" if piranha_count == 1 else "Piranhas"
+    harvester_label = "Harvester" if harvester_count == 1 else "Harvesters"
+    sniper_label = "Sniper" if sniper_count == 1 else "Snipers"
+    
     return {
         "status": "Active",
-        "fleet_allocation": f"{piranha_count} Piranha + {harvester_count} Harvester + {sniper_count} Sniper",
+        "fleet_allocation": f"{piranha_count} {piranha_label} + {harvester_count} {harvester_label} + {sniper_count} {sniper_label}",
         "wallet": f"${vortex.wallet_balance:.2f}" if hasattr(vortex, 'wallet_balance') else "N/A",
         "equity": f"${vortex.total_equity:.2f}" if hasattr(vortex, 'total_equity') else "N/A",
         "slots": vortex.slot_status if hasattr(vortex, 'slot_status') else {},

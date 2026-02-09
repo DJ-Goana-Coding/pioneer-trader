@@ -413,7 +413,7 @@ class VortexBerserker:
                     # Sniper: Fixed 1.5% TP/SL
                     if profit_pct >= self.SNIPER_TP_PCT:
                         await self.execute_exit(symbol, qty, f"Sniper TP ({profit_pct*100:.2f}%)")
-                    elif profit_pct <= -self.SNIPER_SL_PCT:
+                    elif profit_pct <= -self.STOP_LOSS_PCT:
                         await self.execute_exit(symbol, qty, f"Sniper SL ({profit_pct*100:.2f}%)")
         
         except Exception as e:
@@ -421,15 +421,18 @@ class VortexBerserker:
     
     def _push_to_hf(self, trade_data: dict):
         """
-        Push trade data to HuggingFace (stub - requires implementation)
-        TODO: Implement HuggingFace Dataset API integration
+        Push trade data to HuggingFace Dataset (stub implementation)
+        
+        NOTE: This is currently a placeholder that only logs the action.
+        Actual HuggingFace Dataset API integration is not yet implemented.
+        Requires HF_TOKEN environment variable to be set.
         """
         if not self.hf_token:
             return
         
         try:
             # Placeholder for HuggingFace push logic
-            # This would integrate with the HuggingFace Dataset API
+            # TODO: Implement HuggingFace Dataset API integration
             self._log(f"📤 HF: {trade_data['action']} {trade_data['symbol']}")
         except Exception as e:
             self._log(f"⚠️ HF push error: {e}")

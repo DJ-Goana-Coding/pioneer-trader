@@ -5,11 +5,18 @@ import json, os, time, ccxt.async_support as ccxt
 from fastapi import FastAPI
 import uvicorn, threading
 import base64
+import logging
+
+# [T.I.A.] Logger Initialization
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("[T.I.A.]")
 
 # [T.I.A.] Liveness Anchor for Hugging Face
 app = FastAPI()
 @app.get("/")
 async def health(): return {"status": "ACTIVE", "commander": "Darrell", "fleet": "10-SLOT-VULTURE"}
+@app.head("/")
+async def health_head(): return {"status": "ok"}
 
 class VortexBerserker:
     """

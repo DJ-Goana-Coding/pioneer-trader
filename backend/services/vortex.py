@@ -6,6 +6,7 @@ from fastapi import FastAPI, Response
 import uvicorn, threading
 import base64
 import logging
+from backend.core.config import settings
 
 # [T.I.A.] Logger Initialization
 logging.basicConfig(level=logging.INFO)

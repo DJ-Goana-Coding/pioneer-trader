@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 🌊 Fleet Reconfiguration Tests
-Tests for 3 Piranha / 4 Harvester split and enhanced sync-guard
+Tests for 2 Piranha / 4 Harvester / 1 Sniper split and enhanced sync-guard
 """
 
 import sys
@@ -21,32 +21,40 @@ print("🌊 FLEET RECONFIGURATION TESTS")
 print("=" * 80)
 
 # ============================================================================
-# TEST 1: Fleet Configuration - 3 Piranhas / 4 Harvesters
+# TEST 1: Fleet Configuration - 2 Piranhas / 4 Harvesters / 1 Sniper
 # ============================================================================
 print("\n" + "=" * 80)
-print("TEST 1: Fleet Configuration - 3 Piranhas / 4 Harvesters")
+print("TEST 1: Fleet Configuration - 2 Piranhas / 4 Harvesters / 1 Sniper")
 print("=" * 80)
 
 def test_fleet_configuration():
     vortex = VortexBerserker()
     
     # Verify Piranha slots
-    if vortex.PIRANHA_SLOTS == [1, 2, 3]:
+    if vortex.PIRANHA_SLOTS == [1, 2]:
         print(f"✅ PASS - PIRANHA_SLOTS = {vortex.PIRANHA_SLOTS}")
         piranha_pass = True
     else:
-        print(f"❌ FAIL - PIRANHA_SLOTS = {vortex.PIRANHA_SLOTS} (expected [1, 2, 3])")
+        print(f"❌ FAIL - PIRANHA_SLOTS = {vortex.PIRANHA_SLOTS} (expected [1, 2])")
         piranha_pass = False
     
     # Verify Harvester slots
-    if vortex.HARVESTER_SLOTS == [4, 5, 6, 7]:
+    if vortex.HARVESTER_SLOTS == [3, 4, 5, 6]:
         print(f"✅ PASS - HARVESTER_SLOTS = {vortex.HARVESTER_SLOTS}")
         harvester_pass = True
     else:
-        print(f"❌ FAIL - HARVESTER_SLOTS = {vortex.HARVESTER_SLOTS} (expected [4, 5, 6, 7])")
+        print(f"❌ FAIL - HARVESTER_SLOTS = {vortex.HARVESTER_SLOTS} (expected [3, 4, 5, 6])")
         harvester_pass = False
     
-    return piranha_pass and harvester_pass
+    # Verify Sniper slot
+    if vortex.SNIPER_SLOT == 7:
+        print(f"✅ PASS - SNIPER_SLOT = {vortex.SNIPER_SLOT}")
+        sniper_pass = True
+    else:
+        print(f"❌ FAIL - SNIPER_SLOT = {vortex.SNIPER_SLOT} (expected 7)")
+        sniper_pass = False
+    
+    return piranha_pass and harvester_pass and sniper_pass
 
 test1_pass = test_fleet_configuration()
 
@@ -68,29 +76,39 @@ def test_slot_assignment():
         print(f"❌ FAIL - First available slot: {wing_type} {slot_num} (expected piranha 1)")
         return False
     
-    # Fill all Piranha slots
+    # Fill all Piranha slots (2 slots)
     vortex.active_slots['BTC/USDT'] = {'slot': 1, 'wing': 'piranha'}
     vortex.active_slots['ETH/USDT'] = {'slot': 2, 'wing': 'piranha'}
-    vortex.active_slots['BNB/USDT'] = {'slot': 3, 'wing': 'piranha'}
     
-    # Next should be Harvester slot 4
+    # Next should be Harvester slot 3
     wing_type, slot_num = vortex.get_available_slot_type()
-    if wing_type == 'harvester' and slot_num == 4:
+    if wing_type == 'harvester' and slot_num == 3:
         print(f"✅ PASS - After piranhas full, next slot: {wing_type} {slot_num}")
     else:
-        print(f"❌ FAIL - After piranhas full, next slot: {wing_type} {slot_num} (expected harvester 4)")
+        print(f"❌ FAIL - After piranhas full, next slot: {wing_type} {slot_num} (expected harvester 3)")
         return False
     
-    # Fill all slots
-    vortex.active_slots['SOL/USDT'] = {'slot': 4, 'wing': 'harvester'}
-    vortex.active_slots['ADA/USDT'] = {'slot': 5, 'wing': 'harvester'}
-    vortex.active_slots['DOT/USDT'] = {'slot': 6, 'wing': 'harvester'}
-    vortex.active_slots['MATIC/USDT'] = {'slot': 7, 'wing': 'harvester'}
+    # Fill all Harvester slots (4 slots)
+    vortex.active_slots['SOL/USDT'] = {'slot': 3, 'wing': 'harvester'}
+    vortex.active_slots['ADA/USDT'] = {'slot': 4, 'wing': 'harvester'}
+    vortex.active_slots['DOT/USDT'] = {'slot': 5, 'wing': 'harvester'}
+    vortex.active_slots['MATIC/USDT'] = {'slot': 6, 'wing': 'harvester'}
+    
+    # Next should be Sniper slot 7
+    wing_type, slot_num = vortex.get_available_slot_type()
+    if wing_type == 'sniper' and slot_num == 7:
+        print(f"✅ PASS - After harvesters full, next slot: {wing_type} {slot_num}")
+    else:
+        print(f"❌ FAIL - After harvesters full, next slot: {wing_type} {slot_num} (expected sniper 7)")
+        return False
+    
+    # Fill Sniper slot
+    vortex.active_slots['AVAX/USDT'] = {'slot': 7, 'wing': 'sniper'}
     
     # Should be no slots available
     wing_type, slot_num = vortex.get_available_slot_type()
     if wing_type is None and slot_num is None:
-        print(f"✅ PASS - All 7 slots full, no available slots")
+        print(f"✅ PASS - All 7 slots full (2 Piranha + 4 Harvester + 1 Sniper), no available slots")
         return True
     else:
         print(f"❌ FAIL - Expected no slots, got: {wing_type} {slot_num}")
@@ -307,8 +325,8 @@ print("=" * 80)
 
 def test_startup_banner():
     """Test that startup banner is updated (manual verification from logs)"""
-    print("✅ PASS - Startup banner updated to: '🌊 HYBRID SWARM RECONFIGURED: 3 PIRANHAS // 4 HARVESTERS.'")
-    print("   (Manual verification: Check vortex.py line ~294)")
+    print("✅ PASS - Startup banner updated to: '🌊 UNIFIED FLEET SYNCHRONIZED: 2 PIRANHAS // 4 HARVESTERS // 1 SNIPER.'")
+    print("   (Manual verification: Check vortex.py line ~54)")
     return True
 
 test6_pass = test_startup_banner()

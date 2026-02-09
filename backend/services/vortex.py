@@ -34,6 +34,18 @@ class VortexBerserker:
     POST_BUY_COOLDOWN = 5.0  # 5 seconds
     BASE_SCAN_INTERVAL = 2.0  # 2 seconds
     
+    # SCAN CONFIGURATION
+    MAX_SCAN_CANDIDATES = 10
+    CANDLE_TIMEFRAME = '5m'
+    CANDLE_LIMIT = 50
+    
+    # RATE LIMITING
+    RATE_LIMIT_SCAN_INTERVAL = 4.0  # 4 seconds
+    RATE_LIMIT_TIMEOUT = 60  # 60 seconds
+    
+    # BLACKLIST (Pre-configured problematic symbols)
+    INITIAL_BLACKLIST = {'PENGUIN/USDT'}
+    
     def __init__(self):
         """Initialize VortexBerserker"""
         self._log("🌊 HYBRID SWARM RECONFIGURED: 3 PIRANHAS // 4 HARVESTERS.")
@@ -44,7 +56,7 @@ class VortexBerserker:
         # Tracking
         self.active_slots: Dict[str, dict] = {}
         self.slot_status: Dict[int, str] = {}
-        self.blacklisted_symbols: set = {'PENGUIN/USDT'}
+        self.blacklisted_symbols: set = set(self.INITIAL_BLACKLIST)
         
         # Wallet tracking
         self.wallet_balance = 0.0
@@ -93,7 +105,7 @@ class VortexBerserker:
                 # Scan for new opportunities
                 market_data = await self.fetch_global_market()
                 
-                for ticker in market_data[:10]:  # Top 10 candidates
+                for ticker in market_data[:self.MAX_SCAN_CANDIDATES]:
                     wing, slot = self.get_available_slot_type()
                     if wing is None:
                         break
@@ -152,9 +164,9 @@ class VortexBerserker:
             return candidates
             
         except ccxt.RateLimitExceeded:
-            self._log("⚠️ Rate limit hit - increasing scan interval to 4s")
-            self.scan_interval = 4.0
-            self.rate_limit_time = time.time() + 60
+            self._log(f"⚠️ Rate limit hit - increasing scan interval to {self.RATE_LIMIT_SCAN_INTERVAL}s")
+            self.scan_interval = self.RATE_LIMIT_SCAN_INTERVAL
+            self.rate_limit_time = time.time() + self.RATE_LIMIT_TIMEOUT
             return []
         except Exception as e:
             self._log(f"⚠️ fetch_global_market error: {e}")
@@ -188,7 +200,7 @@ class VortexBerserker:
         Handle error 10007 blacklist
         """
         try:
-            ohlcv = await self.exchange.fetch_ohlcv(symbol, '5m', limit=50)
+            ohlcv = await self.exchange.fetch_ohlcv(symbol, self.CANDLE_TIMEFRAME, limit=self.CANDLE_LIMIT)
             return ohlcv
             
         except Exception as e:
@@ -284,9 +296,9 @@ class VortexBerserker:
                     base_currency = symbol.split('/')[0]
                     balance = await self.exchange.fetch_balance()
                     
-                    if base_currency in balance and balance[base_currency]['total'] > 0:
+                    if base_currency in balance and balance[base_currency].get('total', 0) > 0:
                         # Balance exists - force exit
-                        actual_qty = balance[base_currency]['total']
+                        actual_qty = balance[base_currency].get('total', 0)
                         self._log(f"🔄 Balance detected ({actual_qty}), calling force_exit")
                         await self.force_exit(symbol, actual_qty)
                     else:
@@ -392,12 +404,16 @@ class VortexBerserker:
             self._log(f"⚠️ pulse_monitor error: {e}")
     
     def _push_to_hf(self, trade_data: dict):
-        """Push trade data to HuggingFace (if enabled)"""
+        """
+        Push trade data to HuggingFace (stub - requires implementation)
+        TODO: Implement HuggingFace Dataset API integration
+        """
         if not self.hf_token:
             return
         
         try:
-            # HuggingFace push logic would go here
+            # Placeholder for HuggingFace push logic
+            # This would integrate with the HuggingFace Dataset API
             self._log(f"📤 HF: {trade_data['action']} {trade_data['symbol']}")
         except Exception as e:
             self._log(f"⚠️ HF push error: {e}")

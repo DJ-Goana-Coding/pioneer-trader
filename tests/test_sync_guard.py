@@ -62,13 +62,13 @@ result = asyncio.run(test_error_30005())
 test1_pass = result
 
 # ============================================================================
-# TEST 2: Error 10007 (Invalid Symbol) - Blacklist
+# TEST 2: Error 10007 (Invalid Symbol) - Blacklist in get_candle_data
 # ============================================================================
 print("\n" + "=" * 80)
-print("TEST 2: Error 10007 (Invalid Symbol) - Blacklist")
+print("TEST 2: Error 10007 (Invalid Symbol) - Blacklist in get_candle_data")
 print("=" * 80)
 
-async def test_error_10007():
+async def test_error_10007_candle():
     vortex = VortexBerserker()
     
     # Mock the exchange
@@ -77,22 +77,55 @@ async def test_error_10007():
         side_effect=Exception("mexc {'code': '10007', 'msg': 'Illegal symbol'}")
     )
     
-    test_symbol = "PENGUIN/USDT"
+    test_symbol = "INVALID/USDT"
     
     # Try to get candle data - should catch error 10007 and blacklist
     result = await vortex.get_candle_data(test_symbol)
     
     # Verify symbol was blacklisted
     if test_symbol in vortex.blacklisted_symbols:
-        print(f"✅ PASS - {test_symbol} blacklisted after error 10007")
+        print(f"✅ PASS - {test_symbol} blacklisted after error 10007 in get_candle_data")
         print(f"   Blacklisted symbols: {vortex.blacklisted_symbols}")
         return True
     else:
         print(f"❌ FAIL - {test_symbol} not blacklisted after error 10007")
         return False
 
-result = asyncio.run(test_error_10007())
+result = asyncio.run(test_error_10007_candle())
 test2_pass = result
+
+# ============================================================================
+# TEST 2B: Error 10007 (Symbol Not Support API) - Blacklist in execute_order
+# ============================================================================
+print("\n" + "=" * 80)
+print("TEST 2B: Error 10007 (Symbol Not Support API) - Blacklist in execute_order")
+print("=" * 80)
+
+async def test_error_10007_buy():
+    vortex = VortexBerserker()
+    
+    # Mock the exchange
+    vortex.exchange = Mock()
+    vortex.exchange.create_market_buy_order = AsyncMock(
+        side_effect=Exception("mexc {\"code\":10007,\"msg\":\"symbol not support api\"}")
+    )
+    
+    test_symbol = "PENGUIN/USDT"
+    
+    # Try to execute buy order - should catch error 10007 and blacklist
+    await vortex.execute_order(test_symbol, 0.032, 'harvester', 6)
+    
+    # Verify symbol was blacklisted
+    if test_symbol in vortex.blacklisted_symbols:
+        print(f"✅ PASS - {test_symbol} blacklisted after error 10007 in execute_order")
+        print(f"   Blacklisted symbols: {vortex.blacklisted_symbols}")
+        return True
+    else:
+        print(f"❌ FAIL - {test_symbol} not blacklisted after buy order error 10007")
+        return False
+
+result = asyncio.run(test_error_10007_buy())
+test2b_pass = result
 
 # ============================================================================
 # TEST 3: Blacklist Filter in Market Scan
@@ -239,7 +272,8 @@ print("=" * 80)
 
 all_tests = [
     ("Error 30005 Handling", test1_pass),
-    ("Error 10007 Blacklist", test2_pass),
+    ("Error 10007 Blacklist (Candle)", test2_pass),
+    ("Error 10007 Blacklist (Buy Order)", test2b_pass),
     ("Blacklist Filter", test3_pass),
     ("Post-Buy Cooldown", test4_pass),
     ("Sync-Guard Constants", test5_pass)

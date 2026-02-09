@@ -19,53 +19,23 @@ jobs:
         with:
           fetch-depth: 0
       
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          node-version: '18'
-          cache: 'npm'
-      
-      - name: Install dependencies
-        run: |
-          # Add npm ci when dependencies are added to package.json
-          echo "No dependencies to install yet"
-      
-      - name: Build project
-        run: |
-          # Add build commands here
-          echo "Building UI Stencil Pack..."
-          # npm run build
-      
-      - name: Run tests
-        run: |
-          # Add test commands here
-          echo "Running tests..."
-          # npm test
-      
-      - name: Prepare deployment package
-        run: |
-          echo "Preparing deployment package..."
-          mkdir -p dist
-          # Copy necessary files to dist directory
-          # cp -r src public dist/
+          python-version: '3.11'
       
       - name: Deploy to Hugging Face
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_USERNAME: ${{ secrets.HF_USERNAME }}
-          HF_REPO_NAME: ${{ secrets.HF_REPO_NAME }}
         run: |
-          # Install Hugging Face CLI
-          pip install huggingface_hub
-          
           # Configure git
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
           
           # Sync to Hugging Face Spaces
           echo "Syncing to Hugging Face..."
-          # huggingface-cli repo create $HF_REPO_NAME --type space --space_sdk static
-          # git push https://HF_USERNAME:$HF_TOKEN@huggingface.co/spaces/$HF_USERNAME/$HF_REPO_NAME main
+          git remote add hf https://DJ-Goana-Coding:$HF_TOKEN@huggingface.co/spaces/DJ-Goana-Coding/pioneer-trader || true
+          git push hf main --force
       
       - name: Notify on success
         if: success()

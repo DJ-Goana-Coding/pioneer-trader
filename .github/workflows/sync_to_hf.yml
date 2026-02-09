@@ -32,10 +32,17 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
           
+          # Configure git credential helper to avoid token exposure in logs
+          git config --global credential.helper store
+          echo "https://DJ-Goana-Coding:${HF_TOKEN}@huggingface.co" > ~/.git-credentials
+          
           # Sync to Hugging Face Spaces
           echo "Syncing to Hugging Face..."
-          git remote add hf https://DJ-Goana-Coding:$HF_TOKEN@huggingface.co/spaces/DJ-Goana-Coding/pioneer-trader || true
+          git remote add hf https://huggingface.co/spaces/DJ-Goana-Coding/pioneer-trader || true
           git push hf main --force
+          
+          # Clean up credentials
+          rm -f ~/.git-credentials
       
       - name: Notify on success
         if: success()

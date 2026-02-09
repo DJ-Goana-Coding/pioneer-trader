@@ -127,10 +127,13 @@ class VortexBerserker:
                 # Decode base64 to JSON
                 credentials_json = base64.b64decode(credentials_b64).decode('utf-8')
                 
-                # Write to credentials.json
+                # Write to credentials.json in current directory with secure permissions
                 credentials_path = "credentials.json"
                 with open(credentials_path, 'w') as f:
                     f.write(credentials_json)
+                
+                # Set secure file permissions (read/write for owner only)
+                os.chmod(credentials_path, 0o600)
                 
                 self._log(f"🔐 Credential Guard: credentials.json generated from GOOGLE_CREDENTIALS_B64")
                 
@@ -485,21 +488,19 @@ class VortexBerserker:
                         await self.execute_exit(symbol, qty, f"Stop Loss ({profit_pct*100:.2f}%)")
                 
                 elif wing == 'bear':
-                    # Bear: Profit from market drops (inverse logic)
-                    # In a bear strategy, we profit when price drops
-                    # For now, using standard long logic with custom target
+                    # Bear: Short strategy placeholder
+                    # NOTE: Currently using standard long logic with custom profit target
+                    # TODO: Implement actual inverse logic for short positions in future
                     if profit_pct >= self.BEAR_PROFIT_TARGET:
                         await self.execute_exit(symbol, qty, f"Bear TP ({profit_pct*100:.2f}%)")
                     elif profit_pct <= -self.STOP_LOSS_PCT:
                         await self.execute_exit(symbol, qty, f"Bear SL ({profit_pct*100:.2f}%)")
                 
                 elif wing == 'crab':
-                    # Crab: Range trading - quick profits in either direction
-                    if abs(profit_pct) >= self.CRAB_RANGE_PCT:
-                        if profit_pct > 0:
-                            await self.execute_exit(symbol, qty, f"Crab Range TP ({profit_pct*100:.2f}%)")
-                        else:
-                            await self.execute_exit(symbol, qty, f"Crab Range Exit ({profit_pct*100:.2f}%)")
+                    # Crab: Range trading - exit on positive range achievement
+                    # Only check positive side for exits, let stop loss handle downside
+                    if profit_pct >= self.CRAB_RANGE_PCT:
+                        await self.execute_exit(symbol, qty, f"Crab Range TP ({profit_pct*100:.2f}%)")
                     elif profit_pct <= -self.STOP_LOSS_PCT:
                         await self.execute_exit(symbol, qty, f"Crab SL ({profit_pct*100:.2f}%)")
                 

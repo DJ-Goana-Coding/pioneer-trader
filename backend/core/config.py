@@ -29,7 +29,7 @@ class Settings(BaseModel):
     MIN_SLOT_SIZE: float = 8.0
     
     # SYSTEM CONFIG
-    PORT: int = int(os.getenv("PORT", "10000"))
+    PORT: int = int(os.getenv("PORT", "7860"))
     DIAGNOSTIC_MODE: bool = os.getenv("DIAGNOSTIC_MODE", "True").lower() == "true"
     
     # V19 SECURITY & ARCHIVAL

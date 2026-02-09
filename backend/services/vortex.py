@@ -1,3 +1,4 @@
+from typing import Dict, List, Optional, Tuple, Any, Union
 import asyncio
 import pandas_ta as ta
 import json, os, time, ccxt.async_support as ccxt

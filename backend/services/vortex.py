@@ -105,6 +105,15 @@ class VortexBerserker:
     POSITION_SIZE_PCT = 0.04  # 4% of equity per trade
     MIN_POSITION_SIZE = 5.0  # Minimum $5 USDT
     MAX_POSITION_SIZE = 15.0  # Maximum $15 USDT
+    DEFAULT_EQUITY = 100.0  # Default capital for position sizing fallback
+    
+    # CANDLE DATA INDEXING
+    CANDLE_CLOSE_IDX = 4  # Index for close price in OHLCV candle data
+    
+    # TIME CALCULATIONS
+    CANDLES_30MIN = 6  # Number of 5-minute candles in 30 minutes
+    CANDLES_1H = 12  # Number of 5-minute candles in 1 hour
+    CANDLES_4H = 48  # Number of 5-minute candles in 4 hours
     
     def __init__(self):
         """Initialize VortexBerserker with Credential Guard"""
@@ -174,20 +183,21 @@ class VortexBerserker:
     async def _get_price_30min_ago(self, symbol: str, current_price: float) -> Optional[float]:
         """
         Get price from 30 minutes ago for momentum analysis.
-        Uses 5-minute candles, so 30 minutes ago = 6 candles back.
+        Uses 5-minute candles, so 30 minutes ago = CANDLES_30MIN (6) candles back.
         
         Returns:
             Price from 30 minutes ago, or None if data unavailable
         """
         try:
             candles = await self.get_candle_data(symbol)
-            if not candles or len(candles) < 7:
+            min_candles_needed = self.CANDLES_30MIN + 1  # Need 6 historical + 1 current
+            if not candles or len(candles) < min_candles_needed:
                 # Not enough data, return None
                 return None
             
-            # Get the closing price from 6 candles ago (30 minutes)
-            # candles[-1] is current, candles[-7] is 30 minutes ago
-            price_30min_ago = candles[-7][4]  # Index 4 is the close price
+            # Get the closing price from CANDLES_30MIN candles ago
+            # candles[-1] is current, candles[-(CANDLES_30MIN+1)] is 30 minutes ago
+            price_30min_ago = candles[-(self.CANDLES_30MIN + 1)][self.CANDLE_CLOSE_IDX]
             return price_30min_ago
             
         except Exception as e:
@@ -209,10 +219,10 @@ class VortexBerserker:
                 self._log(f"🔍 {symbol}: No 30-min price data, assuming no recovery")
                 return False
             
-            # Calculate momentum (positive = recovering)
+            # Calculate momentum in percentage points (e.g., 2.5 means +2.5%)
             momentum_pct = ((current_price - price_30min_ago) / price_30min_ago) * 100
             
-            # Consider recovery if momentum is positive
+            # Consider recovery if momentum is positive (>0%)
             is_recovering = momentum_pct > 0
             
             if is_recovering:
@@ -283,21 +293,22 @@ class VortexBerserker:
         """
         try:
             candles = await self.get_candle_data(symbol)
-            if not candles or len(candles) < 49:
+            min_candles_needed = self.CANDLES_4H + 1  # Need 48 historical + 1 current
+            if not candles or len(candles) < min_candles_needed:
                 return (None, None)
             
-            current_price = candles[-1][4]  # Latest close price
+            current_price = candles[-1][self.CANDLE_CLOSE_IDX]  # Latest close price
             
-            # 1-hour momentum (12 candles ago at 5-minute intervals)
-            if len(candles) >= 13:
-                price_1h_ago = candles[-13][4]
+            # 1-hour momentum (CANDLES_1H candles ago at 5-minute intervals)
+            if len(candles) >= self.CANDLES_1H + 1:
+                price_1h_ago = candles[-(self.CANDLES_1H + 1)][self.CANDLE_CLOSE_IDX]
                 momentum_1h = ((current_price - price_1h_ago) / price_1h_ago) * 100
             else:
                 momentum_1h = None
             
-            # 4-hour momentum (48 candles ago at 5-minute intervals)
-            if len(candles) >= 49:
-                price_4h_ago = candles[-49][4]
+            # 4-hour momentum (CANDLES_4H candles ago at 5-minute intervals)
+            if len(candles) >= self.CANDLES_4H + 1:
+                price_4h_ago = candles[-(self.CANDLES_4H + 1)][self.CANDLE_CLOSE_IDX]
                 momentum_4h = ((current_price - price_4h_ago) / price_4h_ago) * 100
             else:
                 momentum_4h = None
@@ -357,7 +368,7 @@ class VortexBerserker:
                 return (False, f"Insufficient candle data")
             
             # Calculate RSI (14-period, need 15 candles minimum)
-            closes = [candle[4] for candle in candles[-15:]]
+            closes = [candle[self.CANDLE_CLOSE_IDX] for candle in candles[-15:]]
             rsi = self._calculate_rsi(closes, period=14)
             
             # High-liquidity pairs: Would require MLOFI > 0 (not implemented)
@@ -624,9 +635,9 @@ class VortexBerserker:
         """
         try:
             # Dynamic position sizing (V3.1.0)
-            # Use total_equity if available, otherwise fall back to wallet_balance or config
+            # Use total_equity if available, otherwise fall back to wallet_balance or DEFAULT_EQUITY
             equity = self.total_equity if self.total_equity > 0 else (
-                self.wallet_balance if self.wallet_balance > 0 else 100.0  # Default $100 capital
+                self.wallet_balance if self.wallet_balance > 0 else self.DEFAULT_EQUITY
             )
             stake = self.calculate_position_size(equity)
             qty = stake / price

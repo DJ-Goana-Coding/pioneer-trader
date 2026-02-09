@@ -16,6 +16,9 @@ import ccxt.async_support as ccxt
 # Import VortexBerserker
 from backend.services.vortex import VortexBerserker
 
+# Test Constants
+SECONDS_PER_5MIN = 300  # 5 minutes in seconds
+
 print("=" * 80)
 print("🌊 VORTEX V3.1.0 - INTELLIGENT TRADING TESTS")
 print("=" * 80)
@@ -187,7 +190,7 @@ async def test_stagnation_loss_no_recovery():
         # Declining prices - end at 49510 (50000 - 490)
         price = base_price - (i * 10)
         mock_candles.append([
-            time.time() - (50-i) * 300,  # timestamp (5 min intervals)
+            time.time() - (50-i) * SECONDS_PER_5MIN,  # timestamp (5 min intervals)
             price,  # open
             price + 5,  # high
             price - 5,  # low
@@ -284,7 +287,7 @@ async def test_mlofi_high_liquidity():
     for i in range(50):
         price = base_price - (i * 0.5)  # Declining prices
         mock_candles.append([
-            time.time() - (50-i) * 300,
+            time.time() - (50-i) * SECONDS_PER_5MIN,
             price, price + 1, price - 1, price, 1000
         ])
     
@@ -326,7 +329,7 @@ async def test_mlofi_mid_liquidity():
     for i in range(50):
         price = base_price - (i * 1.0)  # Strong decline for low RSI
         mock_candles.append([
-            time.time() - (50-i) * 300,
+            time.time() - (50-i) * SECONDS_PER_5MIN,
             price, price + 1, price - 1, price, 1000
         ])
     
@@ -368,7 +371,7 @@ async def test_mlofi_low_liquidity():
     for i in range(50):
         price = base_price + (i * 0.5)  # Rising prices
         mock_candles.append([
-            time.time() - (50-i) * 300,
+            time.time() - (50-i) * SECONDS_PER_5MIN,
             price, price + 1, price - 1, price, 1000
         ])
     
@@ -410,7 +413,7 @@ async def test_mlofi_low_liquidity_blocked():
     for i in range(50):
         price = base_price - (i * 0.3)  # Declining prices
         mock_candles.append([
-            time.time() - (50-i) * 300,
+            time.time() - (50-i) * SECONDS_PER_5MIN,
             price, price + 1, price - 1, price, 1000
         ])
     

@@ -7,3 +7,4 @@ requests
 streamlit
 pandas
 pandas_ta
+python-jose

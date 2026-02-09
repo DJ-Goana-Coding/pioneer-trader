@@ -9,8 +9,8 @@ logger = setup_logging("vortex")
 
 class VortexBerserker:
     # Hybrid Swarm Slot Architecture
-    PIRANHA_SLOTS = [1, 2, 3]     # Wing A: Fast momentum (0.4% exits)
-    HARVESTER_SLOTS = [4, 5, 6, 7]   # Wing B: Trailing grid
+    PIRANHA_SLOTS = [1, 2, 3]      # Wing A: Fast momentum (0.4% exits)
+    HARVESTER_SLOTS = [4, 5, 6, 7] # Wing B: Trailing grid
     
     # Trading Parameters
     PIRANHA_PROFIT_TARGET = 0.004  # 0.4% fixed profit exit

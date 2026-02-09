@@ -9,8 +9,8 @@ logger = setup_logging("vortex")
 
 class VortexBerserker:
     # Hybrid Swarm Slot Architecture
-    PIRANHA_SLOTS = [1, 2, 3, 4]  # Wing A: Fast momentum (0.4% exits)
-    HARVESTER_SLOTS = [5, 6, 7]   # Wing B: Trailing grid
+    PIRANHA_SLOTS = [1, 2, 3]      # Wing A: Fast momentum (0.4% exits)
+    HARVESTER_SLOTS = [4, 5, 6, 7] # Wing B: Trailing grid
     
     # Trading Parameters
     PIRANHA_PROFIT_TARGET = 0.004  # 0.4% fixed profit exit
@@ -32,7 +32,7 @@ class VortexBerserker:
         self.exchange = None
         self.current_pulse = 2  # Adaptive pulse: 2s default, 4s on rate limit
         self.pulse_reset_time = None  # Track when to reset pulse
-        self.blacklisted_symbols = set()  # Symbols that returned error 10007
+        self.blacklisted_symbols = set(['PENGUIN/USDT'])  # Symbols that returned error 10007
         self._init_mexc()
 
     def _init_mexc(self):
@@ -252,20 +252,46 @@ class VortexBerserker:
             # Sync-Guard: Handle error 30005 (Oversold - exchange already closed position)
             error_str = str(e)
             if '30005' in error_str:
-                self._log(f"🛡️ SYNC-GUARD: Slot forced clear (Exchange side closed) - {symbol}")
-                # Force clear the slot since exchange already closed it
+                self._log(f"🛡️ SYNC-GUARD: Error 30005 detected - {symbol}")
+                
+                # Extract coin symbol (e.g., BTC from BTC/USDT)
+                coin_symbol = symbol.split('/')[0] if '/' in symbol else symbol
+                
+                # Check balance before clearing slot
+                try:
+                    balance = await self.exchange.fetch_balance()
+                    free_balance = balance.get(coin_symbol, {}).get('free', 0)
+                    
+                    if free_balance > 0:
+                        # Final attempt to sell if balance exists
+                        self._log(f"🛡️ SYNC-GUARD: Balance detected ({free_balance} {coin_symbol}), attempting force exit")
+                        await self.force_exit(symbol, free_balance)
+                    else:
+                        self._log(f"🛡️ SYNC-GUARD: Balance confirmed at 0, clearing slot - {symbol}")
+                except Exception as balance_err:
+                    self._log(f"⚠️ SYNC-GUARD: Balance check failed - {balance_err}")
+                
+                # Clear the slot after balance verification
                 if symbol in self.active_slots:
                     del self.active_slots[symbol]
             else:
                 self._log(f"❌ EXIT FAILED: {e}")
         except Exception as e:
             self._log(f"❌ EXIT FAILED: {e}")
+    
+    async def force_exit(self, symbol, qty):
+        """Force exit a position - final attempt to sell remaining balance."""
+        try:
+            await self.exchange.create_market_sell_order(symbol, qty)
+            self._log(f"🛡️ FORCE EXIT SUCCESS: {symbol} ({qty})")
+        except Exception as e:
+            self._log(f"⚠️ FORCE EXIT FAILED: {symbol} - {e}")
 
     def _log(self, msg: str) -> None:
         logger.info(msg)
 
     async def start(self):
-        self._log("🛡️ T.I.A. HYBRID SWARM: SYNC-GUARD ARMED & STABILIZED")
+        self._log("🌊 HYBRID SWARM RECONFIGURED: 3 PIRANHAS // 4 HARVESTERS.")
         self._log(f"🦈 PIRANHA: Green candles → 0.4% exits")
         self._log(f"🌾 HARVESTER: Top movers → Trailing 0.5% grid")
         self._log(f"🛡️ SYNC-GUARD: 5s cooldown + Error 30005/10007 protection")

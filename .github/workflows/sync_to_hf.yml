@@ -34,16 +34,22 @@ jobs:
             echo "❌ requirements.txt not found!"
             exit 1
           fi
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
       
       - name: Deploy to Hugging Face
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_USERNAME: ${{ secrets.HF_USERNAME }}
-          HF_REPO_NAME: ${{ secrets.HF_REPO_NAME }}
         run: |
           # Configure git
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
+          
+          # Configure git credential helper to avoid token exposure in logs
+          git config --global credential.helper store
+          echo "https://DJ-Goana-Coding:${HF_TOKEN}@huggingface.co" > ~/.git-credentials
           
           # Sync to Hugging Face Spaces
           echo "🚀 Syncing Python trading bot to Hugging Face Spaces..."
@@ -53,6 +59,15 @@ jobs:
           else
             echo "⚠️ Hugging Face credentials not configured. Skipping sync."
           fi
+          echo "Syncing to Hugging Face..."
+          git remote add hf https://huggingface.co/spaces/DJ-Goana-Coding/pioneer-trader || true
+          git push hf main --force
+      
+      - name: Cleanup credentials
+        if: always()
+        run: |
+          # Always clean up credentials regardless of success or failure
+          rm -f ~/.git-credentials
       
       - name: Notify on success
         if: success()

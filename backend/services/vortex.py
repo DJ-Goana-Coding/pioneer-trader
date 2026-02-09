@@ -187,8 +187,9 @@ class VortexBerserker:
             error_str = str(e)
             if '10007' in error_str:
                 self.blacklisted_symbols.add(symbol)
-                self._log(f"🚫 BLACKLIST: {symbol} (Error 10007 - Symbol not supported)")
-            self._log(f"❌ BUY FAILED: {e}")
+                self._log(f"❌ BUY FAILED & BLACKLISTED: {symbol} (Error 10007 - Symbol not supported)")
+            else:
+                self._log(f"❌ BUY FAILED: {e}")
 
     async def pulse_monitor(self):
         """Hybrid Exit Logic: Piranha (0.4% fixed) vs Harvester (trailing grid)."""

@@ -1,22 +1,24 @@
 class Vortex:
     def __init__(self):
-        self.base_stake = 8.00  # updated from 10.50 to 8.00
-        self.e_n = 0.5
+        self.base_stake = 8.00
         self.stop_loss_pct = 0.015  # 1.5% stop-loss
 
-    async def pulse_monitor(self, data):
-        # ... other code ...
-        loss_pct = (data['buy_price'] - current_price) / data['buy_price']
-        if loss_pct >= self.stop_loss_pct:
-            await self.execute_exit(symbol, profit, force=True, reason='STOP_LOSS')  # stop-loss check
+    async def monitor(self, data):
+        # Monitoring logic
+        pass
 
     async def execute_exit(self, symbol, profit, force=False, reason='MANUAL'):
-        # Handle different status messages based on the reason parameter.
         if reason == 'STOP_LOSS':
-            message = f"⚔️ VORTEX V6.9 BERSERKER ENGAGED. LIVE FIRE MODE - $8.00 STAKES"
+            status = "🛡️ STOP-LOSS HIT"
+        elif reason == 'TARGET':
+            status = "💰 TARGET REACHED"
+        elif reason == 'TIMEOUT':
+            status = "⏱️ TIMEOUT EXIT"
         else:
-            message = f"Stake back to $8.00"
-        # logging and other operations
-        self._log(f"🛡️ STOP-LOSS: {self.stop_loss_pct*100}% | 🎯 TARGET: ${self.target_profit_range[0]}-${self.target_profit_range[1]}")
-        # ... other code ...
-        self.base_stake = 8.00  # updated from 10.50 to 8.00
+            status = "🔄 MANUAL EXIT"
+        self._log(f"{status}: {symbol} | Profit: ${profit:+.2f}")
+        # More logic
+
+    async def some_other_method(self):
+        # Logic with reset value
+        pass

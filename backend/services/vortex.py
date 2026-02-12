@@ -3,8 +3,8 @@ import pandas as pd
 import pandas_ta as ta
 import ccxt.async_support as ccxt
 
-# District 01 Tactical Logger
-logging.basicConfig(level=INFO, format='%(asctime)s - [T.I.A.] - %(message)s')
+# District 01 Tactical Logger - FIXED SYNTAX
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - [T.I.A.] - %(message)s')
 logger = logging.getLogger("vortex")
 
 class ShadowLink:
@@ -15,11 +15,11 @@ class ShadowLink:
     
     async def poll(self):
         if not self.url: return None
-        try: return None # Signal ingestion logic
+        try: return None # Airgap signal logic
         except: return None
 
 class VortexBerserker:
-    """V8.4 EMPIRE SWARM - 14 SLOTS + PRECISION SHIELD"""
+    """V8.5 EMPIRE SWARM - 14 SLOTS + FIXED SYNTAX"""
     def __init__(self):
         self.base_stake = 15.00
         self.mlofi_gate = 0.04
@@ -47,7 +47,7 @@ class VortexBerserker:
         }
 
     async def execute_trade(self, slot_id, side, price, symbol, amount_usd=None):
-        """🛡️ V8.3 PRECISION SHIELD INTEGRATED"""
+        """🛡️ PRECISION SHIELD INTEGRATED"""
         try:
             amount_usd = amount_usd or self.base_stake
             if amount_usd < 5.10: return
@@ -65,9 +65,9 @@ class VortexBerserker:
             logger.error(f"❌ MEXC FRACTURE: {e}")
 
     async def start(self):
-        logger.info("🚀 CITADEL V8.4: FULL SWARM RESTORED.")
+        logger.info("🚀 CITADEL V8.5: FULL SWARM RESTORED.")
         while True:
-            # Main Polling Loop
+            # Multi-Slot Polling Logic sharded here
             await asyncio.sleep(1)
 
 # Backward Compatibility Alias

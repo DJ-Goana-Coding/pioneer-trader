@@ -1,29 +1,25 @@
-from fastapi import FastAPI
-import asyncio, os
+import uvicorn
+from fastapi import FastAPI, BackgroundTasks
 from vortex import VortexOmega
 
-app = FastAPI(title="Frankfurt Citadel")
+app = FastAPI()
 vortex = VortexOmega()
-
-@app.get("/")
-@app.head("/")
-async def root():
-    return {
-        "status": "Citadel Online", 
-        "engine": "Vortex V10.0 Omega",
-        "commander": "Quantum Goanna Tech No Logics"
-    }
-
-@app.on_event("startup")
-async def startup_event():
-    # Ignite the engine in the background
-    asyncio.create_task(vortex.start())
 
 @app.get("/health")
 async def health():
-    return {
-        "status": "ok", 
-        "slots": f"{len(vortex.active_trades)}/16", 
-        "balance_mode": "AGGRESSIVE",
-        "oracle_sync": "active"
-    }
+    balance = await vortex.get_balance()
+    return {"status": "ONLINE", "balance": balance['total'].get('USDT', 0)}
+
+@app.get("/strike/{side}/{symbol}/{amount}")
+async def manual_strike(side: str, symbol: str, amount: float):
+    # API Hook for instant trades: /strike/buy/BTC_USDT/0.001
+    return await vortex.execute_trade(symbol, side, amount)
+
+@app.get("/start/{symbol}")
+async def start_vortex(symbol: str, tasks: BackgroundTasks):
+    # API Hook to start the live monitor: /start/BTC_USDT
+    tasks.add_task(vortex.monitor_market, symbol)
+    return {"message": f"Vortex monitoring {symbol} initiated."}
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)

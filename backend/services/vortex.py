@@ -4,7 +4,7 @@ import os
 
 class VortexOmega:
     def __init__(self):
-        # Establish MEXC Bridge
+        # Initializing MEXC Bridge
         self.exchange = ccxt.mexc({
             'apiKey': os.getenv("MEXC_KEY"),
             'secret': os.getenv("MEXC_SECRET"),

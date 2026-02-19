@@ -4,13 +4,10 @@ import os
 
 class VortexOmega:
     def __init__(self):
-        # Initializing MEXC Bridge
-        self.api_key = os.getenv("MEXC_KEY")
-        self.api_secret = os.getenv("MEXC_SECRET")
-        
+        # Establish MEXC Bridge
         self.exchange = ccxt.mexc({
-            'apiKey': self.api_key,
-            'secret': self.api_secret,
+            'apiKey': os.getenv("MEXC_KEY"),
+            'secret': os.getenv("MEXC_SECRET"),
             'enableRateLimit': True,
             'options': {'defaultType': 'spot'}
         })
@@ -22,22 +19,19 @@ class VortexOmega:
     async def execute_trade(self, symbol, side, amount):
         try:
             target = symbol.replace("_", "/")
-            print(f"VORTEX EXECUTION: {side} {amount} {target}")
             order = self.exchange.create_order(target, 'market', side, amount)
+            print(f"STRIKE SUCCESS: {side} {amount} {target}")
             return order
         except Exception as e:
-            print(f"STRIKE ERROR: {e}")
+            print(f"STRIKE FAILURE: {e}")
             return {"error": str(e)}
 
     async def monitor_market(self, symbol):
         self.is_running = True
-        print(f"MONITOR START: {symbol}")
         while self.is_running:
             try:
                 ticker = self.exchange.fetch_ticker(symbol.replace("_", "/"))
-                # [Vortex Logic: Insert Mid-Trade Strategy Here]
-                print(f"LIVE | {symbol} | PRICE: {ticker['last']}")
+                print(f"LIVE | {symbol} | {ticker['last']}")
                 await asyncio.sleep(1)
             except Exception as e:
-                print(f"PULSE DROP: {e}")
                 await asyncio.sleep(5)

@@ -1,20 +1,29 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI
 import asyncio, os
-from backend.services.vortex import VortexEngine
+from vortex import VortexOmega
 
 app = FastAPI(title="Frankfurt Citadel")
-vortex = VortexEngine()
+vortex = VortexOmega()
 
 @app.get("/")
 @app.head("/")
 async def root():
-    return {"status": "Citadel Online", "engine": "Vortex V10.0 Omega"}
+    return {
+        "status": "Citadel Online", 
+        "engine": "Vortex V10.0 Omega",
+        "commander": "Quantum Goanna Tech No Logics"
+    }
 
 @app.on_event("startup")
 async def startup_event():
+    # Ignite the engine in the background
     asyncio.create_task(vortex.start())
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "slots": f"{len(vortex.active_trades)}/16", "balance_mode": "AGGRESSIVE"}
+    return {
+        "status": "ok", 
+        "slots": f"{len(vortex.active_trades)}/16", 
+        "balance_mode": "AGGRESSIVE",
+        "oracle_sync": "active"
+    }

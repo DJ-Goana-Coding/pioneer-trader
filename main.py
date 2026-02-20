@@ -1,32 +1,26 @@
+import os
+import asyncio
 import uvicorn
-from fastapi import FastAPI, BackgroundTasks
-from vortex import VortexOmega  # Direct import works now because they are side-by-side
+from fastapi import FastAPI
+from vortex import VortexOmega
 
-app = FastAPI(title="VORTEX V3.1.0 - FLAT DEPLOY")
+app = FastAPI(title="Frankfurt Citadel")
 vortex = VortexOmega()
+
+@app.on_event("startup")
+async def startup_event():
+    # District 01 Ignition: Fires the 16-slot array
+    asyncio.create_task(vortex.start())
+
+@app.get("/")
+async def root():
+    return {"status": "ONLINE", "commander": "Darrell", "engine": "Vortex V10"}
 
 @app.get("/health")
 async def health():
-    try:
-        equity = await vortex.get_total_equity()
-        return {
-            "version": "3.1.0",
-            "status": "ONLINE",
-            "equity_usdt": equity,
-            "mode": "FLAT_STRIKE"
-        }
-    except Exception as e:
-        return {"status": "OFFLINE", "reason": str(e)}
-
-@app.get("/strike/{side}/{symbol}")
-async def strike(side: str, symbol: str):
-    # Triggers the V3.1.0 automated 4% sizing trade
-    return await vortex.execute_trade(symbol, side)
-
-@app.get("/start/{symbol}")
-async def start(symbol: str, tasks: BackgroundTasks):
-    tasks.add_task(vortex.monitor_market, symbol)
-    return {"message": f"Vortex V3.1.0 monitoring {symbol}"}
+    return {"status": "ok", "active_slots": f"{len(vortex.active_trades)}/16"}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # CRITICAL: Render will kill the app if it doesn't find this Port
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)

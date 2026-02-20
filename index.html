@@ -46,9 +46,9 @@
         </div>
 
         <div class="card" style="margin-bottom: 20px;">
-            <div class="section-title">PORTFOLIO (COINS HELD)</div>
+            <div class="section-title">PORTFOLIO (MEXC VAULT)</div>
             <div id="portfolio-list" style="color: #aaa; line-height: 1.6;">
-                Analyzing Binance Wallet...
+                Analyzing Vault Assets...
             </div>
         </div>
 
@@ -63,7 +63,7 @@
     </div>
 
     <script>
-        const API_URL = "https://pioneer-trader.onrender.com";
+        const API_URL = "/api/data"; 
         async function fetchData() {
             try {
                 const res = await fetch(API_URL);
@@ -74,17 +74,19 @@
                 const port = document.getElementById('portfolio-list');
                 port.innerHTML = Object.keys(data.portfolio).length ? 
                     Object.entries(data.portfolio).map(([c, a]) => `<b>${c}</b>: ${a}`).join(" | ") : 
-                    "Wallet empty. All funds in USDT.";
+                    "Vault empty. All funds in USDT.";
 
                 const feed = document.getElementById('scanner-feed');
-                feed.innerHTML = data.strategies.map(s => `
+                feed.innerHTML = data.strategies.length ? data.strategies.map(s => `
                     <div class="log-item">
                         <span>${s.pair}</span>
-                        <span class="${s.rsi < 55 ? 'buy-signal' : ''}">RSI: ${s.rsi}</span>
+                        <span class="${s.rsi < 35 ? 'buy-signal' : ''}">RSI: ${s.rsi}</span>
                         <span>${s.status}</span>
                     </div>
-                `).join("");
-            } catch (e) { document.getElementById('balance').innerText = "OFFLINE"; }
+                `).join("") : "No signals detected yet...";
+            } catch (e) { 
+                document.getElementById('balance').innerText = "OFFLINE"; 
+            }
         }
         fetchData();
         setInterval(fetchData, 5000);

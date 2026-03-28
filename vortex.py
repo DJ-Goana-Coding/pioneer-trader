@@ -7,7 +7,7 @@ class VortexOmega:
     def __init__(self):
         # Establish MEXC Bridge via Environment Variables
         self.exchange = ccxt.mexc({
-            'apiKey': os.getenv("MEXC_KEY"),
+            'apiKey': os.getenv("MEXC_API_KEY"),
             'secret': os.getenv("MEXC_SECRET"),
             'enableRateLimit': True,
             'options': {'defaultType': 'spot'}

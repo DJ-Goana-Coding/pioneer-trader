@@ -45,3 +45,7 @@ coverage/
 # Misc
 *.tmp
 .cache/
+
+# Connected repositories (cloned separately)
+mapping-and-inventory/
+mapping-and-inventory.backup/

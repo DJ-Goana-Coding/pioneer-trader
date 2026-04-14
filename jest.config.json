@@ -1,0 +1,13 @@
+{
+  "testEnvironment": "node",
+  "transform": {},
+  "testMatch": [
+    "**/tests/**/*.test.js"
+  ],
+  "collectCoverageFrom": [
+    "src/**/*.js",
+    "!src/**/README.md"
+  ],
+  "coverageDirectory": "coverage",
+  "coverageReporters": ["text", "lcov", "html"]
+}

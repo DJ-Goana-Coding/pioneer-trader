@@ -1,3 +1,13 @@
+---
+title: UI Stencil Pack
+emoji: 🚀
+colorFrom: blue
+colorTo: purple
+sdk: docker
+app_port: 10000
+pinned: false
+---
+
 # 🎨 UI Stencil Pack
 
 A fully structured, modular repository containing a UI stencil pack built from clean web components. Designed for extension, theming, and integration with external data sources.

@@ -12,6 +12,8 @@ jobs:
       - name: Push to HF
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          MEXC_API_KEY: ${{ secrets.MEXC_API_KEY }}
+          MEXC_SECRET: ${{ secrets.MEXC_SECRET }}
         run: |
           git remote add hf https://DJ-Goana-Coding:$HF_TOKEN@huggingface.co/spaces/DJ-Goana-Coding/pioneer-trader || true
           git push hf main --force

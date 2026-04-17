@@ -19,6 +19,15 @@ except ImportError as e:
 app = FastAPI(title="CGAL OMEGA TRADER")
 vortex = VortexOmega()
 
+# --- Financial Scout sidecar ---------------------------------------------
+# Scaffolding only: links ISO 20022 parser + Yield Engine behind the
+# existing JWT guard. Finance logic will be verified in a later sweep.
+try:
+    from backend.routers.finance import router as finance_router
+    app.include_router(finance_router)
+except Exception as _finance_exc:  # pragma: no cover - import guard
+    print(f"WARN: finance router not loaded: {_finance_exc}")
+
 @app.get("/health")
 async def health():
     balance = await vortex.get_balance()

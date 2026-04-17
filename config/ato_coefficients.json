@@ -1,0 +1,15 @@
+{
+  "_comment": "ATO Remote Area coefficients. Values are placeholders to be supplied by compliance in a later sweep. Do NOT treat as authoritative tax guidance.",
+  "zones": {
+    "4874": {
+      "zone": "A_SPECIAL",
+      "description": "Template slot for postcode 4874 (Cape York / Torres Strait). Coefficients pending compliance review.",
+      "base_offset": null,
+      "latency_weight": null
+    }
+  },
+  "defaults": {
+    "base_offset": null,
+    "latency_weight": null
+  }
+}

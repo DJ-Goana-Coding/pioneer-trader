@@ -1,0 +1,165 @@
+name: HF Sync (Citadel Unified)
+
+# Unified Hugging Face sync workflow.
+#
+# Replaces the previous `sync_to_hf.yml` and `sync-mapping-to-huggingface.yml`
+# workflows. Two independent jobs:
+#
+#   1. sync-pioneer-trader  — mirrors this repository to the
+#      `DJ-Goana-Coding/pioneer-trader` Space via `git push`.
+#   2. sync-mapping-and-inventory — clones the sibling
+#      `DJ-Goana-Coding/mapping-and-inventory` repo, prepares HF deployment
+#      files, and pushes them to the `DJ-Goana-Coding/Mapping-and-Inventory`
+#      Space using the `huggingface-cli`.
+#
+# Both jobs require the `HF_TOKEN` Actions secret. `GH_TOKEN` is provided
+# automatically by GitHub Actions (`${{ secrets.GITHUB_TOKEN }}`) and is
+# used implicitly by `actions/checkout`.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    # Daily at 00:00 UTC for the mapping-and-inventory mirror.
+    - cron: '0 0 * * *'
+
+concurrency:
+  group: hf-sync-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sync-pioneer-trader:
+    name: Sync pioneer-trader → HF Space
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout pioneer-trader
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          if [ -z "$HF_TOKEN" ]; then
+            echo "::warning::HF_TOKEN secret not set; skipping pioneer-trader Space sync."
+            exit 0
+          fi
+          git remote add hf "https://DJ-Goana-Coding:${HF_TOKEN}@huggingface.co/spaces/DJ-Goana-Coding/pioneer-trader" || \
+            git remote set-url hf "https://DJ-Goana-Coding:${HF_TOKEN}@huggingface.co/spaces/DJ-Goana-Coding/pioneer-trader"
+          git push hf HEAD:main --force
+
+  sync-mapping-and-inventory:
+    name: Sync mapping-and-inventory → HF Space
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout pioneer-trader (for trigger only)
+        uses: actions/checkout@v4
+
+      - name: Setup Git identity
+        run: |
+          git config --global user.name  "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+
+      - name: Clone mapping-and-inventory repository
+        run: |
+          cd /tmp
+          git clone https://github.com/DJ-Goana-Coding/mapping-and-inventory.git
+          ls -la /tmp/mapping-and-inventory
+
+      - name: Prepare Hugging Face deployment files
+        run: |
+          cd /tmp/mapping-and-inventory
+
+          # README with HF Space metadata (sdk: docker + app_port: 7860 to
+          # avoid 'Grey Space' hangs on FastAPI/Gradio Docker deployments).
+          cat > README_HF.md << 'EOF'
+          ---
+          title: Mapping and Inventory
+          emoji: 🗺️
+          colorFrom: blue
+          colorTo: purple
+          sdk: docker
+          app_port: 7860
+          pinned: false
+          ---
+
+          # 🗺️ Mapping and Inventory
+
+          A comprehensive mapping and inventory system for the Citadel Omega
+          ecosystem. Deployed on Hugging Face Spaces via Docker.
+          EOF
+
+          if [ -f README.md ]; then
+            mv README.md README_ORIGINAL.md
+          fi
+          mv README_HF.md README.md
+
+          # Minimal Dockerfile exposing a Gradio docs browser on 7860.
+          cat > Dockerfile << 'DOCKERFILE'
+          FROM python:3.11-slim
+          WORKDIR /app
+          RUN pip install --no-cache-dir gradio huggingface-hub
+          COPY . .
+          RUN cat > app.py << 'PYEOF'
+          import gradio as gr
+          from pathlib import Path
+
+          def list_files():
+              return sorted(str(p) for p in Path(".").rglob("*.md") if p.name != "README.md")
+
+          def read_file(filepath):
+              if not filepath:
+                  return "Please select a file from the dropdown."
+              try:
+                  return Path(filepath).read_text(encoding="utf-8")
+              except Exception as e:
+                  return f"Error reading file: {e}"
+
+          with gr.Blocks(title="Mapping and Inventory", theme=gr.themes.Soft()) as demo:
+              gr.Markdown("# 🗺️ Mapping and Inventory — Documentation Browser")
+              dropdown = gr.Dropdown(choices=list_files(), label="Select file", interactive=True)
+              content = gr.Markdown(value="Select a file to view.")
+              dropdown.change(fn=read_file, inputs=dropdown, outputs=content)
+
+          if __name__ == "__main__":
+              demo.launch(server_name="0.0.0.0", server_port=7860)
+          PYEOF
+          EXPOSE 7860
+          CMD ["python", "app.py"]
+          DOCKERFILE
+
+          cat > requirements.txt << 'EOF'
+          gradio>=4.0.0
+          huggingface-hub>=0.19.0
+          EOF
+
+      - name: Deploy to Hugging Face Space
+        if: github.event_name != 'pull_request'
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          if [ -z "$HF_TOKEN" ]; then
+            echo "::warning::HF_TOKEN secret not set; skipping mapping-and-inventory Space sync."
+            exit 0
+          fi
+          cd /tmp/mapping-and-inventory
+          pip install --quiet "huggingface-hub[cli]"
+          huggingface-cli login --token "$HF_TOKEN"
+          huggingface-cli upload DJ-Goana-Coding/Mapping-and-Inventory . \
+            --repo-type=space \
+            --commit-message="Sync from mapping-and-inventory repository" \
+            || echo "::warning::Upload completed with warnings"
+
+      - name: Summary
+        run: |
+          {
+            echo "## 🌉 HF Sync Summary"
+            echo ""
+            echo "- pioneer-trader → https://huggingface.co/spaces/DJ-Goana-Coding/pioneer-trader"
+            echo "- mapping-and-inventory → https://huggingface.co/spaces/DJ-Goana-Coding/Mapping-and-Inventory"
+          } >> "$GITHUB_STEP_SUMMARY"

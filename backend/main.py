@@ -28,6 +28,15 @@ try:
 except Exception as _finance_exc:  # pragma: no cover - import guard
     print(f"WARN: finance router not loaded: {_finance_exc}")
 
+# --- Hub synapse ----------------------------------------------------------
+# Welds this node to the central 'mapping-and-inventory' Hub by exposing
+# /v1/ingest and /v1/query that forward to the global FAISS vector store.
+try:
+    from backend.routers.hub_router import router as hub_router
+    app.include_router(hub_router)
+except Exception as _hub_exc:  # pragma: no cover - import guard
+    print(f"WARN: hub router not loaded: {_hub_exc}")
+
 @app.get("/health")
 async def health():
     balance = await vortex.get_balance()

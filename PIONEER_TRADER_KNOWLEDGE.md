@@ -81,7 +81,7 @@ pioneer-trader/
 │       ├── archival.py             ← ArchivalService — JSONL shadow archive
 │       ├── redis_cache.py          ← RedisCache — portfolio, peaks, trade history
 │       ├── oms.py                  ← OMS — order management with risk clamp
-│       └── admiral_engine.py       ← (duplicate entry — same as above)
+│       └── tia_admiral_bridge.py   ← Authorization bridge
 │
 ├── src/                            ← UI Stencil Pack (web components)
 │   ├── adaptors/                   ← REST, WS, mock data connectors
@@ -219,7 +219,7 @@ All configuration is read from environment variables (or `.env` file):
 | `MIN_SLOT_SIZE` | `8.0` | Minimum slot size |
 | `REDIS_URL` | `redis://localhost:6379` | Redis connection URL |
 | `REDIS_ENABLED` | `True` | Enable/disable Redis |
-| `PORT` | `7860` | (legacy — Dockerfile uses 10000) |
+| `PORT` | `10000` | Uvicorn listen port (Dockerfile: `--port 10000`) |
 | `ADMIN_USERNAME` | `admin` | Login username |
 | `ADMIN_PASSWORD` | `""` | Login password — MUST be set |
 | `SECRET_KEY` | `""` | JWT signing key — MUST be set (≥32 chars) |

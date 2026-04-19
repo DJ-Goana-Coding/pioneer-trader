@@ -207,12 +207,16 @@ async def ready():
 # Librarian can index every node uniformly. No auth required — read-only.
 @app.get("/v1/system/status", tags=["system"])
 async def system_status(request: Request):
+    # Each FastAPI route may carry a list of tags; we want the first tag of
+    # every tagged route. Routes without tags (docs, openapi.json, etc.)
+    # contribute nothing.
     routers_loaded = sorted(
         {
-            getattr(r, "tags", [None])[0]
+            next(iter(getattr(r, "tags", []) or []), None)
             for r in app.routes
             if getattr(r, "tags", None)
         }
+        - {None}
     )
     return {
         "node": "pioneer-trader",
@@ -220,7 +224,7 @@ async def system_status(request: Request):
         "version": "v1",
         "execution_mode": settings.EXECUTION_MODE,
         "exchange": "MEXC",
-        "routers_loaded": [r for r in routers_loaded if r],
+        "routers_loaded": routers_loaded,
         "services": {
             "exchange_service": getattr(request.app.state, "exchange_service", None) is not None,
             "oms": getattr(request.app.state, "oms", None) is not None,

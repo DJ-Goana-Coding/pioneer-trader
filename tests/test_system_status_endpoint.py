@@ -45,8 +45,18 @@ class TestSystemStatusEndpoint(unittest.TestCase):
         with TestClient(app) as client:
             body = client.get("/v1/system/status").json()
         loaded = set(body["routers_loaded"])
-        # Routers we know we registered in main.py.
-        for tag in {"auth", "telemetry", "cockpit", "security", "system"}:
+        # Every router we register in main.py — including the trade and
+        # strategy routers wired via the lifespan handler — must appear
+        # here. This is the QGTNL contract used by the Vercel HUD.
+        for tag in {
+            "auth",
+            "telemetry",
+            "cockpit",
+            "security",
+            "trade",
+            "strategy",
+            "system",
+        }:
             self.assertIn(tag, loaded, f"router '{tag}' not advertised by /v1/system/status")
 
     def test_services_section_keys(self):

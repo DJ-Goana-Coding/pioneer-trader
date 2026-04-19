@@ -126,6 +126,7 @@ pioneer-trader/
 |--------|------|-------------|
 | GET | `/health` | Process liveness: `{"status":"ONLINE"}` |
 | GET | `/ready` | Deep probe: touches MEXC, returns USDT balance |
+| GET | `/v1/system/status` | **Standardised QGTNL telemetry contract** — node identity, routers loaded, service init state, hub URL |
 | GET | `/v1/hub/health` | Reports which Hub URL this node is connected to |
 | GET | `/cockpit/health` | Cockpit component health |
 | GET | `/cockpit/status` | T.I.A. + Admiral + Vortex status |
@@ -157,8 +158,10 @@ pioneer-trader/
 |--------|------|-------------|
 | GET | `/auth/me` | Current authenticated user |
 | GET | `/telemetry/status` | System status + execution mode |
-| POST | `/strike` | Manual trade execution |
-| POST | `/start/{symbol}` | Start background market monitoring |
+| POST | `/strike` | Manual trade execution (audit-logged) |
+| POST | `/start/{symbol}` | Start background market monitoring (audit-logged) |
+| POST | `/trade/order` | Place order via OMS with risk clamp |
+| GET | `/strategy/analyze/{symbol}` | Run a named strategy (`p25_momentum`, `golden_cross`) on the symbol |
 | POST | `/v1/ingest` | Forward RAG payload to Mapping Hub |
 | POST | `/v1/query` | Forward RAG query to Mapping Hub |
 | POST | `/v1/finance/analyze` | Parse ISO 20022 + compute yield |
@@ -272,10 +275,9 @@ All configuration is read from environment variables (or `.env` file):
 
 ## 8. Known Issues & Incomplete Items
 
-### Issue 1 — `trade.py` and `strategy.py` routers not mounted
-- **Reason:** Both depend on `app.state.oms`, `app.state.exchange_service`, `app.state.strategy_engine` which are never initialised in `main.py`
-- **Impact:** Trade order placement and strategy analysis endpoints are unreachable
-- **Fix Needed:** Add lifespan startup handler in `main.py` to initialise ExchangeService, OMS, and StrategyEngine into `app.state`
+### Issue 1 — `trade.py` and `strategy.py` routers not mounted ✅ RESOLVED (Session 2)
+- **Resolution:** Added FastAPI `lifespan` handler in `main.py` that initialises `ExchangeService`, `OMS`, and `StrategyLogic` into `app.state`. Both routers are now mounted with import guards.
+- **Strategy router fix:** Replaced calls to non-existent `StrategyEngine.calculate_indicators()` / `check_signal()` with a `StrategyLogic`-driven dispatcher supporting `p25_momentum` and `golden_cross`.
 
 ### Issue 2 — `config/ato_coefficients.json` is an empty stub
 - **File:** `config/ato_coefficients.json`

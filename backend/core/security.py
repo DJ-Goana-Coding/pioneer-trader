@@ -38,3 +38,6 @@ async def get_current_admin(token: str = Depends(oauth2_scheme)):
             headers={"WWW-Authenticate": "Bearer"},
         )
     return username
+
+# Alias: routers that use get_current_user are protected at the same admin level.
+get_current_user = get_current_admin

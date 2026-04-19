@@ -49,6 +49,38 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
 )
 
+# --- Auth router (required for /auth/login tokenUrl) ----------------------
+try:
+    from backend.routers.auth import router as auth_router
+except ImportError as _auth_exc:  # pragma: no cover - import guard
+    print(f"WARN: auth router not loaded: {_auth_exc}")
+else:
+    app.include_router(auth_router)
+
+# --- Telemetry router -----------------------------------------------------
+try:
+    from backend.routers.telemetry import router as telemetry_router
+except ImportError as _telemetry_exc:  # pragma: no cover - import guard
+    print(f"WARN: telemetry router not loaded: {_telemetry_exc}")
+else:
+    app.include_router(telemetry_router)
+
+# --- Cockpit router (T.I.A. + Admiral command center) ---------------------
+try:
+    from backend.routers.cockpit import router as cockpit_router
+except ImportError as _cockpit_exc:  # pragma: no cover - import guard
+    print(f"WARN: cockpit router not loaded: {_cockpit_exc}")
+else:
+    app.include_router(cockpit_router)
+
+# --- Security router (Red Flag Scanner + Shadow Archive) ------------------
+try:
+    from backend.routers.security import router as security_router
+except ImportError as _security_exc:  # pragma: no cover - import guard
+    print(f"WARN: security router not loaded: {_security_exc}")
+else:
+    app.include_router(security_router)
+
 # --- Financial Scout sidecar ---------------------------------------------
 # Scaffolding only: links ISO 20022 parser + Yield Engine behind the
 # existing JWT guard. Finance logic will be verified in a later sweep.

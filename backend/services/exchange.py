@@ -11,10 +11,13 @@ logger = setup_logging("exchange")
 class ExchangeService:
     def __init__(self):
         self.exchange = None
-        self.mode = settings.EXECUTION_MODE
+        self.mode: str = "PAPER"  # resolved inside initialize()
 
     async def initialize(self):
         """Initialize MEXC exchange connection"""
+        # Read mode fresh at initialize time so tests (and dynamic reconfiguration)
+        # that set settings.EXECUTION_MODE after construction are honoured.
+        self.mode = settings.EXECUTION_MODE
         
         # Validate credentials for LIVE mode
         if self.mode == "LIVE":

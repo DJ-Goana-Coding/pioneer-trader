@@ -7,7 +7,7 @@
 
 from enum import Enum
 from typing import List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from backend.core.logging_config import setup_logging
 
 logger = setup_logging("admiral_engine")
@@ -83,7 +83,7 @@ class AdmiralEngine:
             return False
         
         self.premium_authorized = True
-        self.authorization_timestamp = datetime.utcnow().isoformat()
+        self.authorization_timestamp = datetime.now(timezone.utc).isoformat()
         self.authorized_by = authorized_by
         
         # Enable all premium capabilities

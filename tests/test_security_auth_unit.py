@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 import unittest
 import asyncio
 from unittest.mock import patch, Mock, MagicMock
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 class TestVerifyAdminCredentials(unittest.TestCase):
@@ -84,7 +84,7 @@ class TestDecodeToken(unittest.TestCase):
         from jose import jwt
         expired_payload = {
             "sub": "testuser",
-            "exp": datetime.utcnow() - timedelta(minutes=10),
+            "exp": datetime.now(timezone.utc) - timedelta(minutes=10),
         }
         expired_token = jwt.encode(expired_payload, "test-secret-key", algorithm="HS256")
         from backend.core.security import decode_token

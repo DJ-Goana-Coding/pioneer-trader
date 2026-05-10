@@ -32,7 +32,8 @@ class TestSettingsDefaults(unittest.TestCase):
         self.assertEqual(self.settings.REDIS_URL, "redis://localhost:6379")
 
     def test_redis_enabled_default(self):
-        self.assertTrue(self.settings.REDIS_ENABLED)
+        # Redis is disabled by default: no Redis service is bundled in the deployment.
+        self.assertFalse(self.settings.REDIS_ENABLED)
 
     def test_max_order_notional_default(self):
         self.assertEqual(self.settings.MAX_ORDER_NOTIONAL, 50.0)

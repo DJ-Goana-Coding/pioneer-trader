@@ -1,7 +1,6 @@
 import json
 import os
 import re
-import sys
 from contextlib import asynccontextmanager
 from typing import Literal, NoReturn
 
@@ -13,20 +12,7 @@ from pydantic import BaseModel, Field, ValidationError
 from backend.core.config import settings
 from backend.core.security import get_current_admin
 from backend.services.agent_audit import agent_audit
-
-# THE SERVICE BRIDGE: Force Python to see the 'services' sub-folder
-current_dir = os.path.dirname(os.path.abspath(__file__))
-services_path = os.path.join(current_dir, 'services')
-if services_path not in sys.path:
-    sys.path.append(services_path)
-
-# Now it can find 'vortex' inside 'backend/services/'
-try:
-    from vortex import VortexOmega
-except ImportError as e:
-    # Diagnostic fallback
-    print(f"DEBUG: Current Sys Path: {sys.path}")
-    raise e
+from backend.services.vortex import VortexOmega
 
 
 # --- Lifespan: initialise app.state services so trade/strategy routers work

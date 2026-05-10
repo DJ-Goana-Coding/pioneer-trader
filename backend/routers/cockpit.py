@@ -144,7 +144,7 @@ async def consume_aegis_snapshot(snapshot: AegisSnapshot):
     Returns:
         Confirmation of snapshot consumption
     """
-    tia_agent.consume_aegis(snapshot.dict())
+    tia_agent.consume_aegis(snapshot.model_dump())
     
     return {
         "success": True,

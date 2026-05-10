@@ -15,7 +15,7 @@ class TestSkinWalkerBrainInitialization:
         """Test that brain initializes with default TIA persona"""
         test_brain = SkinWalkerBrain()
         assert test_brain.persona is not None
-        assert test_brain.persona.name == "TIA"
+        assert test_brain.persona.name == "T.I.A."
         assert test_brain.vortex is not None
 
     def test_brain_singleton(self):

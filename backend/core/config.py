@@ -48,7 +48,9 @@ class Settings(BaseModel):
 settings = Settings()
 
 # Fail fast at startup if critical secrets are missing in a non-test environment.
-# Tests set PIONEER_SKIP_SECRET_CHECK=1 to suppress this guard.
+# Set the environment variable PIONEER_SKIP_SECRET_CHECK=1 only in automated
+# test runners (see tests/conftest.py) where real secrets are not available.
+# Never set this in production — an empty SECRET_KEY allows JWT forgery.
 if not os.getenv("PIONEER_SKIP_SECRET_CHECK"):
     _missing = []
     if not settings.SECRET_KEY:

@@ -9,7 +9,8 @@ server-side startup validation guard does not abort the process during tests.
 import os
 
 # Provide dummy secrets so config.py's startup validation guard does not raise.
-# These values are only used during testing and carry no real credentials.
+# These are intentionally fixed, well-known test values — they are never used
+# in production and carry no real credentials.  DO NOT copy them to .env.
 os.environ.setdefault("SECRET_KEY", "test-secret-key-for-pytest-suite-32chars!")
 os.environ.setdefault("ADMIN_PASSWORD", "test-admin-password")
 

@@ -15,7 +15,10 @@ class OrderRequest(BaseModel):
     @field_validator('amount', mode='before')
     @classmethod
     def validate_amount(cls, v):
-        v = float(v)
+        try:
+            v = float(v)
+        except (TypeError, ValueError):
+            raise ValueError("Amount must be a valid number")
         if math.isnan(v) or math.isinf(v) or v <= 0:  # Reject NaN, ±Infinity, and non-positive values
             raise ValueError("Amount must be a finite positive number")
         if v > 10000:  # Sanity check - adjust based on your risk limits

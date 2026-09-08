@@ -11,6 +11,9 @@ on:
 jobs:
   validate-and-sync:
     runs-on: ubuntu-latest
+    env:
+      MEXC_API_KEY: ${{ secrets.MEXC_API_KEY }}
+      MEXC_SECRET: ${{ secrets.MEXC_SECRET }}
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python 3.11

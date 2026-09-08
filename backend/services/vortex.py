@@ -5,12 +5,58 @@ import pandas_ta as ta
 import os
 import json
 import time
+from collections.abc import MutableMapping
 from datetime import datetime
 from huggingface_hub import HfApi
 from backend.core.logging_config import setup_logging
 
 # Setup Logger
 logger = setup_logging("vortex")
+
+
+class LegacyActiveSlots(MutableMapping):
+    """Symbol-keyed compatibility view over legacy active slot access."""
+
+    def __init__(self, vortex):
+        self._vortex = vortex
+
+    def __getitem__(self, symbol):
+        if symbol in self._vortex._legacy_active_slots:
+            return self._vortex._legacy_active_slots[symbol]
+
+        trade = self._vortex._find_active_trade_by_symbol(symbol)
+        if trade is None:
+            raise KeyError(symbol)
+        return trade
+
+    def __setitem__(self, symbol, trade):
+        normalized_trade = dict(trade) if isinstance(trade, dict) else trade
+        if isinstance(normalized_trade, dict):
+            normalized_trade.setdefault('symbol', symbol)
+        self._vortex._legacy_active_slots[symbol] = normalized_trade
+
+    def __delitem__(self, symbol):
+        if symbol not in self._vortex._legacy_active_slots:
+            raise KeyError(symbol)
+        del self._vortex._legacy_active_slots[symbol]
+
+    def __iter__(self):
+        seen = set()
+
+        for symbol in self._vortex._legacy_active_slots:
+            seen.add(symbol)
+            yield symbol
+
+        for trade in self._vortex.active_trades.values():
+            symbol = trade.get('symbol')
+            if symbol and symbol not in seen:
+                yield symbol
+
+    def __len__(self):
+        return len(set(iter(self)))
+
+    def clear(self):
+        self._vortex._legacy_active_slots.clear()
 
 class VortexBerserker:
     # Wing Type Constants
@@ -27,7 +73,7 @@ class VortexBerserker:
         # 2. EXCHANGE & SECURITY
         self.api_key = os.getenv("MEXC_API_KEY")
         self.secret = os.getenv("MEXC_SECRET")
-        self.mexc = ccxt.mexc({
+        self._exchange = ccxt.mexc({
             'apiKey': self.api_key, 'secret': self.secret, 
             'enableRateLimit': True, 'options': {'defaultType': 'spot'}
         })
@@ -35,16 +81,15 @@ class VortexBerserker:
         
         # 3. STATE & UPLINKS
         self.active_trades = {}
+        self._legacy_active_slots = {}
         self.hf_api = HfApi()
         self.hf_token = os.getenv("HUGGINGFACE_TOKEN")
         self.hf_repo = os.getenv("HUGGINGFACE_REPO")
         self.shadow_path = os.getenv("SHADOW_ARCHIVE_PATH", "/tmp/airgap")
         self.running = False
         self.base_stake = 8.00
-        
         # 4. LEGACY COMPATIBILITY
-        self.exchange = self.mexc  # Alias for compatibility
-        self.active_slots = self.active_trades  # Alias for compatibility
+        self.active_slots = LegacyActiveSlots(self)
         self.blacklisted_symbols = self.blacklisted  # Alias for compatibility
         self.max_slots = 7
         self.current_pulse = 2  # Adaptive pulse: 2s default, 4s on rate limit
@@ -58,15 +103,59 @@ class VortexBerserker:
         self.stop_loss_pct = self.STOP_LOSS_PCT
         self.POST_BUY_COOLDOWN = 5.0  # 5-second cooldown after buy before allowing sell
 
+    @property
+    def exchange(self):
+        return self._exchange
+
+    @exchange.setter
+    def exchange(self, value):
+        self._exchange = value
+
+    @property
+    def mexc(self):
+        return self._exchange
+
+    @mexc.setter
+    def mexc(self, value):
+        self._exchange = value
+
+    def _find_active_trade_by_symbol(self, symbol):
+        for trade in self.active_trades.values():
+            if trade.get('symbol') == symbol:
+                return trade
+        return None
+
+    def _iter_managed_positions(self):
+        positions = []
+        active_symbols = set()
+
+        for slot, trade in list(self.active_trades.items()):
+            symbol = trade.get('symbol')
+            if symbol:
+                active_symbols.add(symbol)
+            positions.append((slot, trade, False))
+
+        for symbol, trade in list(self._legacy_active_slots.items()):
+            if symbol not in active_symbols:
+                positions.append((symbol, trade, True))
+
+        return positions
+
+    def _clear_position(self, position_key, is_legacy=False):
+        if is_legacy:
+            self._legacy_active_slots.pop(position_key, None)
+        else:
+            self.active_trades.pop(position_key, None)
+        
     async def _scan_market(self):
         """Dual-Scan: Momentum for Piranhas, EMA/Vol for Sniper"""
         try:
-            tickers = await self.mexc.fetch_tickers()
+            tickers = await self.exchange.fetch_tickers()
             candidates = []
             sniper_targets = []
             
             for s, t in tickers.items():
-                if '/USDT' in s and t.get('quoteVolume', 0) > 500000 and s not in self.blacklisted:
+                if s.endswith('/USDT') and t.get('quoteVolume', 0) > 500000 and s not in self.blacklisted:
                     # Basic Piranha/Harvester Filter
                     if t.get('percentage', 0) > 2.0 and t.get('last', 0) > t.get('open', 0):
                         candidates.append({'symbol': s, 'price': t['last'], 'change': t['percentage']})
@@ -89,7 +178,7 @@ class VortexBerserker:
     async def _analyze_sniper(self, symbol):
         """🦅 SNIPER LOGIC: EMA50 + 300% Vol Surge"""
         try:
-            ohlcv = await self.mexc.fetch_ohlcv(symbol, '5m', limit=55)
+            ohlcv = await self.exchange.fetch_ohlcv(symbol, '5m', limit=55)
             df = pd.DataFrame(ohlcv, columns=['time','open','high','low','close','vol'])
             
             # Technicals
@@ -175,18 +264,28 @@ class VortexBerserker:
 
     async def _fill_slot(self, slot, symbol, wing, price=None):
         """Fill a trading slot with a new position."""
-        if not price:
+        if price is None:
             try:
-                ticker = await self.mexc.fetch_ticker(symbol)
+                ticker = await self.exchange.fetch_ticker(symbol)
                 price = ticker['last']
             except Exception as e:
                 self._log(f"⚠️ PRICE FETCH ERROR {symbol}: {e}")
                 return
+
+        try:
+            price = float(price)
+        except (TypeError, ValueError):
+            self._log(f"⚠️ INVALID PRICE {symbol}: {price}")
+            return
+
+        if price <= 0:
+            self._log(f"⚠️ INVALID PRICE {symbol}: {price}")
+            return
         
         try:
             # Calculate exact amount (Base Currency)
             amount = self.base_stake / price
-            order = await self.mexc.create_market_buy_order(symbol, amount)
+            order = await self.exchange.create_market_buy_order(symbol, amount)
             
             wing_emoji = "🦈" if wing == self.WING_PIRANHA else ("🌾" if wing == self.WING_HARVESTER else "🎯")
             self._log(f"⚔️ {wing.upper()} (Slot {slot}) attacking {symbol} @ {price}")
@@ -216,15 +315,16 @@ class VortexBerserker:
     
     async def _manage_exits(self):
         """Monitor and exit positions based on wing-specific strategies."""
-        if not self.active_trades: 
+        managed_positions = self._iter_managed_positions()
+        if not managed_positions:
             return
         
         try:
             # Get current prices for all active positions
-            symbols_list = [trade['symbol'] for trade in self.active_trades.values()]
-            tickers = await self.mexc.fetch_tickers(symbols_list)
+            symbols_list = [trade['symbol'] for _, trade, _ in managed_positions]
+            tickers = await self.exchange.fetch_tickers(symbols_list)
             
-            for slot, trade in list(self.active_trades.items()):
+            for position_key, trade, is_legacy in managed_positions:
                 # Sync-Guard: Enforce post-buy cooldown (5 seconds)
                 time_held = time.time() - trade['time']
                 if time_held < self.POST_BUY_COOLDOWN:
@@ -237,16 +337,16 @@ class VortexBerserker:
                 # SNIPER: Fixed 1.5% TP / 1.5% SL
                 if trade['wing'] == self.WING_SNIPER:
                     if curr >= trade['entry'] * 1.015:
-                        await self._execute_sell(slot, trade, "🎯 SNIPER HEADSHOT")
+                        await self._execute_sell(position_key, trade, "🎯 SNIPER HEADSHOT", is_legacy=is_legacy)
                     elif curr <= trade['entry'] * 0.985:
-                        await self._execute_sell(slot, trade, "💀 SNIPER MISS")
+                        await self._execute_sell(position_key, trade, "💀 SNIPER MISS", is_legacy=is_legacy)
 
                 # PIRANHA: 0.4% Scalp
                 elif trade['wing'] == self.WING_PIRANHA:
                     if profit_pct >= self.PIRANHA_PROFIT_TARGET:
-                        await self._execute_sell(slot, trade, f"💰 PIRANHA BITE (Slot {slot})")
+                        await self._execute_sell(position_key, trade, f"💰 PIRANHA BITE (Slot {trade.get('slot', position_key)})", is_legacy=is_legacy)
                     elif profit_pct <= -self.STOP_LOSS_PCT:
-                        await self._execute_sell(slot, trade, f"🛡️ PIRANHA STOP (Slot {slot})")
+                        await self._execute_sell(position_key, trade, f"🛡️ PIRANHA STOP (Slot {trade.get('slot', position_key)})", is_legacy=is_legacy)
                 
                 # HARVESTER: Trailing Grid
                 elif trade['wing'] == self.WING_HARVESTER:
@@ -261,10 +361,10 @@ class VortexBerserker:
                     # Exit on 1.5% pullback from peak
                     pullback = trade['peak_profit'] - profit_pct
                     if trade['peak_profit'] > 0 and pullback >= self.HARVESTER_PULLBACK_EXIT:
-                        await self._execute_sell(slot, trade, f"🌾 HARVEST DONE (Slot {slot}, Peak: {trade['peak_profit']*100:.1f}%)")
+                        await self._execute_sell(position_key, trade, f"🌾 HARVEST DONE (Slot {trade.get('slot', position_key)}, Peak: {trade['peak_profit']*100:.1f}%)", is_legacy=is_legacy)
                     # Hard stop loss
                     elif profit_pct <= -self.STOP_LOSS_PCT:
-                        await self._execute_sell(slot, trade, f"🛡️ HARVESTER STOP (Slot {slot})")
+                        await self._execute_sell(position_key, trade, f"🛡️ HARVESTER STOP (Slot {trade.get('slot', position_key)})", is_legacy=is_legacy)
                         
         except ccxt.RateLimitExceeded:
             self._log("⚠️ RATE LIMIT: Activating adaptive throttle")
@@ -273,14 +373,14 @@ class VortexBerserker:
         except Exception as e:
             self._log(f"⚠️ MONITOR ERROR: {e}")
 
-    async def _execute_sell(self, slot, trade, reason):
+    async def _execute_sell(self, position_key, trade, reason, is_legacy=False):
         """Execute sell order with Sync-Guard protection."""
         try:
             # BALANCE CHECK (Sync-Guard)
-            bal = await self.mexc.fetch_balance()
+            bal = await self.exchange.fetch_balance()
             coin = trade['symbol'].split('/')[0]
             if bal.get(coin, {}).get('free', 0) > 0:
-                await self.mexc.create_market_sell_order(trade['symbol'], trade['qty'])
+                await self.exchange.create_market_sell_order(trade['symbol'], trade['qty'])
                 self._log(f"{reason}: {trade['symbol']} Closed.")
                 
                 # DATA UPLINK TRIGGER
@@ -288,7 +388,7 @@ class VortexBerserker:
             else:
                 self._log(f"🛡️ SYNC-GUARD: Ghost slot cleared {trade['symbol']}")
             
-            del self.active_trades[slot]
+            self._clear_position(position_key, is_legacy=is_legacy)
         except ccxt.ExchangeError as e:
             # Sync-Guard: Handle error 30005 (Oversold - exchange already closed position)
             error_str = str(e)
@@ -300,7 +400,7 @@ class VortexBerserker:
                 
                 # Check balance before clearing slot
                 try:
-                    balance = await self.mexc.fetch_balance()
+                    balance = await self.exchange.fetch_balance()
                     free_balance = balance.get(coin_symbol, {}).get('free', 0)
                     
                     if free_balance > 0:
@@ -313,8 +413,7 @@ class VortexBerserker:
                     self._log(f"⚠️ SYNC-GUARD: Balance check failed - {balance_err}")
                 
                 # Clear the slot after balance verification
-                if slot in self.active_trades:
-                    del self.active_trades[slot]
+                self._clear_position(position_key, is_legacy=is_legacy)
             else:
                 self._log(f"❌ EXIT FAILED: {e}")
         except Exception as e:
@@ -323,7 +422,7 @@ class VortexBerserker:
     async def force_exit(self, symbol, qty):
         """Force exit a position - final attempt to sell remaining balance."""
         try:
-            await self.mexc.create_market_sell_order(symbol, qty)
+            await self.exchange.create_market_sell_order(symbol, qty)
             self._log(f"🛡️ FORCE EXIT SUCCESS: {symbol} ({qty})")
         except Exception as e:
             self._log(f"⚠️ FORCE EXIT FAILED: {symbol} - {e}")
@@ -400,7 +499,7 @@ class VortexBerserker:
     async def get_candle_data(self, symbol: str):
         """Legacy compatibility: fetch 1-minute candle data."""
         try:
-            ohlcv = await self.mexc.fetch_ohlcv(symbol, timeframe='1m', limit=2)
+            ohlcv = await self.exchange.fetch_ohlcv(symbol, timeframe='1m', limit=2)
             if len(ohlcv) < 2:
                 return None
             df = pd.DataFrame(ohlcv, columns=['time', 'open', 'high', 'low', 'close', 'vol'])
@@ -425,8 +524,13 @@ class VortexBerserker:
                 slot = s
                 break
         
-        if slot:
+        if slot is not None:
             await self._execute_sell(slot, self.active_trades[slot], reason)
+            return
+
+        legacy_trade = self._legacy_active_slots.get(symbol)
+        if legacy_trade is not None:
+            await self._execute_sell(symbol, legacy_trade, reason, is_legacy=True)
 
 # CRITICAL ALIAS for FastAPI Compatibility
 VortexEngine = VortexBerserker

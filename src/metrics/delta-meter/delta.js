@@ -8,50 +8,65 @@ class DeltaMeter {
     this.values = [];
     this.maxHistory = options.maxHistory || 100;
     this.baseline = options.baseline || 0;
+    this.name = options.name || 'DeltaMeter';
   }
 
   /**
-   * Add a new value and calculate delta
+   * Add a new value
    */
   addValue(value, timestamp = Date.now()) {
-    const previousValue = this.values.length > 0 
-      ? this.values[this.values.length - 1].value 
-      : this.baseline;
-    
-    const delta = value - previousValue;
-    const deltaPercent = previousValue !== 0 ? (delta / previousValue) * 100 : 0;
-
     this.values.push({
       value,
       timestamp,
-      delta,
-      deltaPercent,
     });
 
     // Maintain max history size
     if (this.values.length > this.maxHistory) {
       this.values.shift();
     }
+  }
 
-    return {
-      value,
-      delta,
-      deltaPercent,
-    };
+  /**
+   * Get current value
+   */
+  getCurrentValue() {
+    if (this.values.length === 0) return null;
+    return this.values[this.values.length - 1].value;
+  }
+
+  /**
+   * Get previous value
+   */
+  getPreviousValue() {
+    if (this.values.length < 2) return null;
+    return this.values[this.values.length - 2].value;
   }
 
   /**
    * Get current delta
    */
   getCurrentDelta() {
-    if (this.values.length < 2) {
-      return { delta: 0, deltaPercent: 0 };
+    const current = this.getCurrentValue();
+    const previous = this.getPreviousValue();
+
+    if (current === null) {
+      return { delta: null, deltaPercent: null, current: null, previous: null };
     }
 
-    const latest = this.values[this.values.length - 1];
+    if (previous === null) {
+      return { delta: null, deltaPercent: null, current, previous };
+    }
+
+    const delta = current - previous;
+    const deltaPercent = previous !== 0
+      ? Math.round((delta / previous) * 10000) / 100
+      : Infinity;
+
     return {
-      delta: latest.delta,
-      deltaPercent: latest.deltaPercent,
+      delta,
+      deltaPercent,
+      current,
+      previous,
     };
   }
 
@@ -81,15 +96,60 @@ class DeltaMeter {
   /**
    * Get all historical values
    */
-  getHistory() {
+  getAllValues() {
     return [...this.values];
   }
 
   /**
-   * Reset the meter
+   * Get limited history
+   */
+  getHistory(limit) {
+    if (!limit || limit >= this.values.length) {
+      return [...this.values];
+    }
+    return this.values.slice(-limit);
+  }
+
+  /**
+   * Clear all values
+   */
+  clear() {
+    this.values = [];
+  }
+
+  /**
+   * Get statistics
+   */
+  getStatistics() {
+    if (this.values.length === 0) {
+      return {
+        average: null,
+        min: null,
+        max: null,
+        range: null,
+      };
+    }
+
+    const values = this.values.map(v => v.value);
+    const sum = values.reduce((a, b) => a + b, 0);
+    const average = sum / values.length;
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min;
+
+    return {
+      average,
+      min,
+      max,
+      range,
+    };
+  }
+
+  /**
+   * Reset the meter (alias for clear)
    */
   reset() {
-    this.values = [];
+    this.clear();
   }
 }
 

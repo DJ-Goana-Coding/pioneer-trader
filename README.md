@@ -1,245 +1,147 @@
-# 🎨 UI Stencil Pack
+---
+title: APEX PRIMUS VIRTUS
+emoji: 🚀
+colorFrom: blue
+colorTo: purple
+sdk: docker
+app_port: 10000
+pinned: false
+---
 
-A fully structured, modular repository containing a UI stencil pack built from clean web components. Designed for extension, theming, and integration with external data sources.
+# 🚀 Pioneer Trader — CGAL Omega Trading System
 
-## 📋 Project Purpose
+**Pioneer Trader** is a FastAPI-based algorithmic trading backend for the Citadel Omega ecosystem. It connects to the MEXC exchange, provides a JWT-secured REST API for trade execution, exposes a cockpit for system monitoring via T.I.A. (Tactical Intelligence Agent), and mirrors to the central Mapping & Inventory Hub.
 
-The UI Stencil Pack provides a foundation for building modern, themeable web dashboards and applications. It offers:
+## 📋 Project Overview
 
-- **Modular Components**: Reusable, framework-agnostic web components
-- **Multiple Themes**: Pre-built themes (Cyberpunk, Rainforest, Terminal)
-- **Specialized Dashboards**: Purpose-built layouts for trading, monitoring, and governance
-- **Data Adaptors**: Flexible connectors for REST APIs, WebSockets, and mock data
-- **Intelligent Agents**: Automated assistants for discovery, tracking, execution, styling, and mapping
-- **Metrics & Indicators**: Visual feedback for state changes and deltas
+| Item | Detail |
+|------|--------|
+| **Type** | FastAPI trading backend |
+| **Exchange** | MEXC (spot) |
+| **Auth** | JWT (HS256) via `/auth/login` |
+| **HF Space** | `DJ-Goanna-Coding/APEX-PRIMUS-VIRTUS` |
+| **GitHub** | `DJ-Goana-Coding/pioneer-trader` |
+| **Hub Link** | `DJ-Goana-Coding/mapping-and-inventory` |
+| **Default Port** | 10000 |
+| **Default Mode** | PAPER (safe, no real trades) |
 
-## 🚀 Installation
+## 🏗️ Architecture
 
-### Prerequisites
+```
+pioneer-trader/
+├── backend/
+│   ├── main.py              # FastAPI app entry point
+│   ├── core/
+│   │   ├── config.py        # Pydantic settings (env vars)
+│   │   ├── security.py      # JWT auth (get_current_admin / get_current_user)
+│   │   ├── logging_config.py
+│   │   ├── personas.py      # T.I.A., DJ Goanna, Void, Hippy persona registry
+│   │   ├── iso20022_parser.py  # ISO 20022 structural parser (stub)
+│   │   └── yield_engine.py  # Remote-area yield calculator
+│   ├── routers/
+│   │   ├── auth.py          # POST /auth/login, GET /auth/me
+│   │   ├── telemetry.py     # GET /telemetry/health, /telemetry/status
+│   │   ├── cockpit.py       # T.I.A. + Admiral command endpoints
+│   │   ├── security.py      # Red Flag Scanner + Shadow Archive
+│   │   ├── finance.py       # ISO 20022 + Yield Engine (JWT-guarded)
+│   │   ├── hub_router.py    # /v1/ingest, /v1/query → Mapping Hub
+│   │   ├── brain.py         # GET /brain/knowledge
+│   │   ├── trade.py         # POST /trade/order (needs app.state.oms)
+│   │   └── strategy.py      # GET /strategy/analyze/{symbol}
+│   └── services/
+│       ├── vortex.py        # VortexOmega — lightweight MEXC wrapper
+│       ├── exchange.py      # ExchangeService (async MEXC, paper/live modes)
+│       ├── strategy_engine.py  # StrategyEngine (Frankfurt)
+│       ├── tia_agent.py     # TIAAgent — risk analysis
+│       ├── admiral_engine.py   # AdmiralEngine — capability gating
+│       ├── tia_admiral_bridge.py  # Authorization bridge
+│       ├── garage_manager.py   # Genesis Garage strategy loader
+│       ├── brain.py         # SkinWalkerBrain — persona + knowledge
+│       ├── knowledge.py     # KnowledgeBase (JSON file store)
+│       ├── malware_protection.py  # RedFlagScanner
+│       ├── archival.py      # Shadow Archive (JSONL trade logs)
+│       ├── redis_cache.py   # RedisCache (graceful fallback)
+│       ├── oms.py           # OMS — order management
+│       └── admiral_engine.py
+├── src/                     # UI Stencil Pack (web components)
+├── tests/                   # Test suite
+├── config/
+│   └── ato_coefficients.json  # ATO yield engine coefficients (empty stub)
+├── Dockerfile               # Docker build (python:3.12-slim, port 10000)
+├── requirements.txt         # Python deps
+└── .github/workflows/
+    └── hf-sync.yml          # Syncs repo → HF Space on push to main
+```
 
-- Node.js 16+ (for package management)
-- Modern web browser (Chrome, Firefox, Safari, Edge)
-- Python 3 (optional, for local dev server)
+## 🔑 Required Environment Variables
 
-### Quick Start
+Set these in your `.env` file or as HuggingFace Space secrets:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `MEXC_API_KEY` | For LIVE mode | MEXC exchange API key |
+| `MEXC_SECRET` | For LIVE mode | MEXC exchange secret |
+| `ADMIN_USERNAME` | Yes | Login username (default: `admin`) |
+| `ADMIN_PASSWORD` | Yes | Login password |
+| `SECRET_KEY` | Yes | JWT signing key (min 32 chars) |
+| `EXECUTION_MODE` | No | `PAPER` (default) or `LIVE` |
+| `ALLOWED_ORIGINS` | No | Extra CORS origins (comma-separated) |
+| `REDIS_URL` | No | Redis URL (default: `redis://localhost:6379`) |
+| `REDIS_ENABLED` | No | `True`/`False` (default: `True`) |
+| `MAX_ORDER_NOTIONAL` | No | Max USDT per order (default: `50.0`) |
+| `MAPPING_HUB_URL` | No | Hub URL (default: HF Space URL) |
+
+> Security note: do not commit `.env` or other secret-bearing files. Configure credentials through GitHub Actions secrets (for CI/CD) and Hugging Face Space secrets (for runtime). If any credentials were previously committed, rotate them immediately and audit repository history before deciding on any separate history-rewrite incident response.
+>
+> Credentials/secrets that should be configured outside source control include: `HF_TOKEN`, `MEXC_API_KEY`, `MEXC_SECRET`, `BINANCE_API_KEY`, `BINANCE_SECRET`, `ADMIN_PASSWORD`, `SECRET_KEY`, and `KILL_AUTH_TOKEN`.
+
+## 🚀 Quick Start
 
 ```bash
-# Clone the repository
-git clone https://github.com/DJ-Goana-Coding/pioneer-trader.git
-cd pioneer-trader
+# Install dependencies
+pip install -r requirements.txt
 
-# Install dependencies (if any)
-npm install
+# Copy and fill in environment variables
+cp .env.example .env
 
-# Start local development server
-npm run dev
+# Run locally
+uvicorn backend.main:app --host 0.0.0.0 --port 10000
 
-# Open in browser
-# Visit http://localhost:8000/public/demo/
+# Or via Docker
+docker build -t pioneer-trader .
+docker run -p 10000:10000 --env-file .env pioneer-trader
 ```
 
-## 📖 Usage Examples
+## 🔌 API Endpoints
 
-### Using Themes
-
-```html
-<!-- Link to a theme in your HTML -->
-<link rel="stylesheet" href="/src/themes/cyberpunk/theme.css">
-```
-
-### Importing Agents
-
-```javascript
-// Import and use agents
-import ScoutAgent from './src/agents/scout/scout.js';
-import StylistAgent from './src/agents/stylist/stylist.js';
-
-// Initialize scout to discover opportunities
-const scout = new ScoutAgent({ interval: 5000 });
-scout.start();
-
-// Use stylist to manage themes
-const stylist = new StylistAgent();
-stylist.applyTheme('rainforest');
-```
-
-### Using Adaptors
-
-```javascript
-// REST API communication
-import RestAdaptor from './src/adaptors/rest/rest.js';
-
-const api = new RestAdaptor('https://api.example.com');
-const data = await api.get('/markets');
-
-// WebSocket for real-time data
-import WsAdaptor from './src/adaptors/ws/ws.js';
-
-const ws = new WsAdaptor('wss://api.example.com/stream');
-await ws.connect();
-ws.on('price_update', (data) => {
-  console.log('New price:', data);
-});
-```
-
-### Using Metrics
-
-```javascript
-// Track deltas over time
-import DeltaMeter from './src/metrics/delta-meter/delta.js';
-
-const priceMeter = new DeltaMeter();
-priceMeter.addValue(45000);
-priceMeter.addValue(45500);
-const delta = priceMeter.getCurrentDelta(); // { delta: 500, deltaPercent: 1.11 }
-
-// State indicators
-import StateIndicator from './src/metrics/state-indicators/indicator.js';
-
-const indicator = new StateIndicator({
-  states: ['idle', 'active', 'warning', 'error']
-});
-indicator.setState('active');
-```
-
-## 🏗️ Component Philosophy
-
-All components in this stencil pack follow these principles:
-
-1. **Web Standards First**: Built with native Web Components APIs
-2. **Framework Agnostic**: Works with vanilla JS, React, Vue, or any framework
-3. **Themeable**: All components respect CSS custom properties
-4. **Accessible**: ARIA labels, keyboard navigation, and semantic HTML
-5. **Composable**: Components can be nested and combined
-6. **Event-Driven**: Clear communication via standard DOM events
-
-### Component Guidelines
-
-- Use Custom Elements for reusable components
-- Leverage Shadow DOM for encapsulation when appropriate
-- Expose clean, documented APIs via attributes and properties
-- Emit custom events for state changes
-- Support theming through CSS variables
-- Ensure cross-browser compatibility
-
-## 🎯 Architecture
-
-### Directory Structure
-
-```
-ui-stencil-pack/
-├─ src/
-│  ├─ core/              # Core components and layouts
-│  ├─ themes/            # Visual themes (cyberpunk, rainforest, terminal)
-│  ├─ dashboards/        # Pre-built dashboard templates
-│  ├─ adaptors/          # Data source connectors (REST, WS, mock)
-│  ├─ metrics/           # Measurement and visualization tools
-│  └─ agents/            # Intelligent automation agents
-├─ public/demo/          # Live demonstration
-├─ .github/workflows/    # CI/CD automation
-├─ package.json          # Project metadata
-├─ README.md             # This file
-└─ AGENT_BLUEPRINT.md    # Agent architecture documentation
-```
-
-## 🎨 Available Themes
-
-### Cyberpunk
-Neon-infused, high-contrast theme with electric colors and glowing effects.
-
-### Rainforest
-Natural, earthy theme with green tones inspired by lush rainforests.
-
-### Terminal
-Classic terminal/console theme with monospace fonts and minimal colors.
-
-## 📊 Dashboards
-
-### Trading Dashboard
-Real-time market data, active positions, order book, and performance metrics.
-
-### Monitoring Dashboard
-System health, active agents, network activity, and error logs.
-
-### Governance Dashboard
-Proposals, voting power, decision history, and participant tracking.
-
-## 🤖 Agents
-
-### Scout Agent
-Discovers and monitors market opportunities and data sources.
-
-### Hound Agent
-Tracks and pursues specific targets or patterns.
-
-### Sniper Agent
-Executes precise, targeted actions at optimal moments.
-
-### Stylist Agent
-Manages themes, UI styling, and visual consistency.
-
-### Cartographer Agent
-Maps data relationships, visualizes structures, and maintains navigation.
-
-## 🔌 Adaptors
-
-### REST Adaptor
-HTTP REST API communication with timeout and error handling.
-
-### WebSocket Adaptor
-Real-time communication with automatic reconnection.
-
-### Mock Adaptor
-Static test data for development and testing.
-
-## 📈 Metrics
-
-### Delta Meter
-Measures and visualizes changes/deltas over time with historical tracking.
-
-### State Indicators
-Tracks and displays system state with visual feedback and history.
-
-## 🧪 Development
-
-```bash
-# Run development server
-npm run dev
-
-# View demo
-open http://localhost:8000/public/demo/
-
-# View specific dashboard
-open http://localhost:8000/src/dashboards/trading/
-
-# Run tests (when available)
-npm test
-```
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/health` | None | Process liveness probe |
+| GET | `/ready` | None | Deep probe (touches exchange) |
+| POST | `/auth/login` | None | Get JWT token |
+| GET | `/auth/me` | JWT | Current user info |
+| GET | `/telemetry/health` | None | Telemetry health |
+| GET | `/telemetry/status` | JWT | System status |
+| GET | `/cockpit/status` | None | T.I.A. + Admiral + Vortex status |
+| GET | `/cockpit/health` | None | Cockpit component health |
+| POST | `/cockpit/authorize` | None | T.I.A. authorizes Admiral |
+| GET | `/cockpit/tia/summary` | None | T.I.A. risk assessment |
+| GET | `/security/status` | None | Red Flag Scanner status |
+| POST | `/security/scan` | None | Scan code for threats |
+| GET | `/v1/hub/health` | None | Hub connection status |
+| POST | `/v1/ingest` | None | Forward data to Mapping Hub |
+| POST | `/v1/query` | None | Query Mapping Hub RAG |
+| POST | `/v1/finance/analyze` | JWT | ISO 20022 + Yield analysis |
+| POST | `/strike` | JWT | Manual trade execution |
+| POST | `/start/{symbol}` | JWT | Start market monitoring |
 
 ## 🤝 Contributing
 
-This is a structured template repository. To extend:
-
-1. Add new components to `src/core/components/`
-2. Create custom themes in `src/themes/`
-3. Build new dashboards in `src/dashboards/`
-4. Implement additional agents in `src/agents/`
-5. Add data adaptors in `src/adaptors/`
-
-## 📄 License
-
-MIT License - See LICENSE file for details
+See [AGENT_BLUEPRINT.md](./AGENT_BLUEPRINT.md) for agent architecture, and [PIONEER_TRADER_KNOWLEDGE.md](./PIONEER_TRADER_KNOWLEDGE.md) for comprehensive system documentation.
 
 ## 🔗 Links
 
-- [Repository](https://github.com/DJ-Goana-Coding/pioneer-trader)
-- [Agent Blueprint](./AGENT_BLUEPRINT.md)
-- [Demo](./public/demo/index.html)
-
-## 📝 Notes
-
-- All placeholder files are ready for implementation
-- Themes use CSS custom properties for easy customization
-- Agents follow a consistent interface pattern
-- Adaptors are promise-based for async operations
-- All code is ES6+ module format
+- [GitHub Repository](https://github.com/DJ-Goana-Coding/pioneer-trader)
+- [HuggingFace Space](https://huggingface.co/spaces/DJ-Goanna-Coding/APEX-PRIMUS-VIRTUS)
+- [Mapping & Inventory Hub](https://github.com/DJ-Goana-Coding/mapping-and-inventory)
+- [API Docs](https://dj-goana-coding-pioneer-trader.hf.space/docs)

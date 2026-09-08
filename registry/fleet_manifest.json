@@ -1,0 +1,87 @@
+{
+  "fleet_version": "3.1.0",
+  "description": "Vortex Berserker V3.1.0 - Intelligent Stagnation Filter & Adaptive MLOFI Gatekeeper",
+  "base_stake_calculation": "dynamic",
+  "max_stake_pct": 0.04,
+  "min_stake_usdt": 5.0,
+  "max_stake_usdt": 15.0,
+  "wings": {
+    "Piranha": {
+      "enabled": true,
+      "description": "Aggressive scalping strategy",
+      "params": {
+        "target": 0.004,
+        "stop_loss": 0.015,
+        "min_volume_24h": 500000
+      },
+      "slots": [1, 2]
+    },
+    "Harvester": {
+      "enabled": true,
+      "description": "Trailing profit strategy",
+      "params": {
+        "trail_start": 0.005,
+        "trail_distance": 0.015,
+        "pullback_exit": 0.015
+      },
+      "slots": [3, 4, 5]
+    },
+    "Bear": {
+      "enabled": true,
+      "description": "Short strategy (placeholder - currently using long logic)",
+      "params": {
+        "target": 0.008,
+        "stop_loss": 0.015
+      },
+      "slots": [6, 7]
+    },
+    "Crab": {
+      "enabled": true,
+      "description": "Range trading strategy",
+      "params": {
+        "range_pct": 0.006,
+        "stop_loss": 0.015
+      },
+      "slots": [8, 9]
+    },
+    "Banker": {
+      "enabled": false,
+      "description": "Conservative long-term holds",
+      "reason": "Disabled - Conflicts with MLOFI negative filter and catches falling knives in current market conditions",
+      "params": {
+        "target": 0.020,
+        "stop_loss": 0.015
+      },
+      "slots": [10]
+    }
+  },
+  "stagnation_filter": {
+    "enabled": true,
+    "min_hold_hours": 4.0,
+    "loss_threshold_pct": -0.8,
+    "breakeven_range": {
+      "min_pct": -0.3,
+      "max_pct": 0.3,
+      "max_hours": 8.0
+    },
+    "recovery_momentum_window_minutes": 30
+  },
+  "mlofi_gatekeeper": {
+    "enabled": true,
+    "note": "MLOFI calculation not yet implemented - using RSI and momentum as proxy",
+    "high_liquidity_threshold_usd": 50000000,
+    "mid_liquidity_threshold_usd": 10000000,
+    "rsi_oversold_threshold": 25,
+    "rules": {
+      "high_liquidity": "Strict MLOFI > 0 requirement (proxy: RSI < 30)",
+      "mid_liquidity": "Allow negative MLOFI if RSI < 25 (extreme oversold)",
+      "low_liquidity": "Use price momentum instead (1h and 4h must be positive)"
+    }
+  },
+  "risk_management": {
+    "post_buy_cooldown_seconds": 5.0,
+    "max_scan_candidates": 10,
+    "candle_timeframe": "5m",
+    "candle_limit": 50
+  }
+}

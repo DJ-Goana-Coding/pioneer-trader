@@ -5,7 +5,7 @@ import os
 import json
 import redis
 from typing import Optional, Any, Dict
-from datetime import datetime
+from datetime import datetime, timezone
 from backend.core.logging_config import setup_logging
 
 logger = setup_logging("redis_cache")
@@ -57,7 +57,7 @@ class RedisCache:
         if not self.client:
             return False
         try:
-            state['last_updated'] = datetime.utcnow().isoformat()
+            state['last_updated'] = datetime.now(timezone.utc).isoformat()
             self.client.hset("vortex:portfolio", mapping={
                 k: json.dumps(v) if isinstance(v, (dict, list)) else str(v)
                 for k, v in state.items()
@@ -142,7 +142,7 @@ class RedisCache:
         if not self.client:
             return
         try:
-            trade['timestamp'] = datetime.utcnow().isoformat()
+            trade['timestamp'] = datetime.now(timezone.utc).isoformat()
             self.client.lpush("vortex:trades", json.dumps(trade))
             self.client.ltrim("vortex:trades", 0, 99)  # Keep last 100 trades
         except Exception as e:

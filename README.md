@@ -1,5 +1,5 @@
 ---
-title: Pioneer Trader
+title: APEX PRIMUS VIRTUS
 emoji: 🚀
 colorFrom: blue
 colorTo: purple
@@ -19,7 +19,7 @@ pinned: false
 | **Type** | FastAPI trading backend |
 | **Exchange** | MEXC (spot) |
 | **Auth** | JWT (HS256) via `/auth/login` |
-| **HF Space** | `DJ-Goana-Coding/pioneer-trader` |
+| **HF Space** | `DJ-Goanna-Coding/APEX-PRIMUS-VIRTUS` |
 | **GitHub** | `DJ-Goana-Coding/pioneer-trader` |
 | **Hub Link** | `DJ-Goana-Coding/mapping-and-inventory` |
 | **Default Port** | 10000 |
@@ -70,7 +70,7 @@ pioneer-trader/
 ├── Dockerfile               # Docker build (python:3.12-slim, port 10000)
 ├── requirements.txt         # Python deps
 └── .github/workflows/
-    └── hf_sync.yml          # Syncs repo → HF Space on push to main
+    └── hf-sync.yml          # Syncs repo → HF Space on push to main
 ```
 
 ## 🔑 Required Environment Variables
@@ -90,6 +90,10 @@ Set these in your `.env` file or as HuggingFace Space secrets:
 | `REDIS_ENABLED` | No | `True`/`False` (default: `True`) |
 | `MAX_ORDER_NOTIONAL` | No | Max USDT per order (default: `50.0`) |
 | `MAPPING_HUB_URL` | No | Hub URL (default: HF Space URL) |
+
+> Security note: do not commit `.env` or other secret-bearing files. Configure credentials through GitHub Actions secrets (for CI/CD) and Hugging Face Space secrets (for runtime). If any credentials were previously committed, rotate them immediately and audit repository history before deciding on any separate history-rewrite incident response.
+>
+> Credentials/secrets that should be configured outside source control include: `HF_TOKEN`, `MEXC_API_KEY`, `MEXC_SECRET`, `BINANCE_API_KEY`, `BINANCE_SECRET`, `ADMIN_PASSWORD`, `SECRET_KEY`, and `KILL_AUTH_TOKEN`.
 
 ## 🚀 Quick Start
 
@@ -138,7 +142,6 @@ See [AGENT_BLUEPRINT.md](./AGENT_BLUEPRINT.md) for agent architecture, and [PION
 ## 🔗 Links
 
 - [GitHub Repository](https://github.com/DJ-Goana-Coding/pioneer-trader)
-- [HuggingFace Space](https://huggingface.co/spaces/DJ-Goana-Coding/pioneer-trader)
+- [HuggingFace Space](https://huggingface.co/spaces/DJ-Goanna-Coding/APEX-PRIMUS-VIRTUS)
 - [Mapping & Inventory Hub](https://github.com/DJ-Goana-Coding/mapping-and-inventory)
 - [API Docs](https://dj-goana-coding-pioneer-trader.hf.space/docs)
-

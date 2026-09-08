@@ -93,8 +93,10 @@ for test_name, result in all_tests:
 if passed == total:
     print("\n🛰️ T.I.A. Fleet Endpoints: ALL TESTS PASSED")
     print("=" * 80)
-    sys.exit(0)
+    if __name__ == "__main__":
+        sys.exit(0)
 else:
     print("\n⚠️ Some tests failed - review implementation")
     print("=" * 80)
-    sys.exit(1)
+    if __name__ == "__main__":
+        sys.exit(1)

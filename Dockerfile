@@ -5,4 +5,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 # Remove start.sh dependence for direct ignition
 EXPOSE 10000
-CMD ["python", "main.py"]
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "10000"]

@@ -1,10 +1,10 @@
 from backend.core.personas import PERSONA_REGISTRY, detect_persona
-from backend.services.vortex import VortexEngine
+from backend.services.vortex import VortexOmega
 from backend.services.knowledge import knowledge_base
 class SkinWalkerBrain:
     def __init__(self):
         self.persona = PERSONA_REGISTRY["TIA"]
-        self.vortex = VortexEngine()
+        self.vortex = VortexOmega()
     async def process(self, text: str):
         new_p = detect_persona(text)
         if new_p: self.persona = new_p

@@ -6,7 +6,7 @@
 # ================================================================
 
 from typing import Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timezone
 from backend.services.tia_agent import tia_agent, RiskLevel
 from backend.services.admiral_engine import admiral_engine
 from backend.services.redis_cache import redis_cache
@@ -71,7 +71,7 @@ class TIAAdmiralBridge:
                 "premium_authorized": "true" if admiral_engine.premium_authorized else "false",
                 "timestamp": admiral_engine.authorization_timestamp or "",
                 "authorized_by": admiral_engine.authorized_by or "",
-                "updated_at": datetime.utcnow().isoformat()
+                "updated_at": datetime.now(timezone.utc).isoformat()
             })
             redis_cache.client.expire("bridge:authorization", 3600)  # 1 hour TTL
         except Exception as e:
@@ -86,7 +86,7 @@ class TIAAdmiralBridge:
         """
         event = {
             "type": event_type,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             **details
         }
         
@@ -181,7 +181,7 @@ class TIAAdmiralBridge:
             "success": True,
             "message": "🔒 Admiral premium access REVOKED",
             "reason": reason,
-            "revoked_at": datetime.utcnow().isoformat()
+            "revoked_at": datetime.now(timezone.utc).isoformat()
         }
         
         self._log_authorization_event("REVOKED", {

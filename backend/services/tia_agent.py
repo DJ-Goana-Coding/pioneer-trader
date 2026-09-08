@@ -7,7 +7,7 @@
 
 from enum import Enum
 from typing import Dict, Optional, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from backend.services.redis_cache import redis_cache
 from backend.core.logging_config import setup_logging
 
@@ -64,7 +64,7 @@ class TIAAgent:
                 "risk_level": self.current_risk.value,
                 "confidence": str(self.confidence),
                 "last_assessment": self.last_assessment or "",
-                "updated_at": datetime.utcnow().isoformat()
+                "updated_at": datetime.now(timezone.utc).isoformat()
             })
             redis_cache.client.expire("tia:state", 3600)  # 1 hour TTL
         except Exception as e:
@@ -81,7 +81,7 @@ class TIAAgent:
                 - recent_trades: Recent trade history
                 - market_volatility: Optional volatility indicator
         """
-        snapshot["timestamp"] = datetime.utcnow().isoformat()
+        snapshot["timestamp"] = datetime.now(timezone.utc).isoformat()
         self.aegis_snapshots.append(snapshot)
         
         # Keep last 10 snapshots
@@ -158,7 +158,7 @@ class TIAAgent:
         
         # Update state
         self.current_risk = new_risk
-        self.last_assessment = datetime.utcnow().isoformat()
+        self.last_assessment = datetime.now(timezone.utc).isoformat()
         
         # Persist to Redis
         self._persist_state()

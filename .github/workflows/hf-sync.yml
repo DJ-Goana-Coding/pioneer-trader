@@ -1,0 +1,48 @@
+name: HF Space Sync (APEX PRIMUS VIRTUS)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync-space:
+    name: Sync main → Hugging Face Space
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Push main to DJ-Goanna-Coding/APEX-PRIMUS-VIRTUS
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${HF_TOKEN:-}" ]; then
+            echo "::error::HF_TOKEN is not configured."
+            exit 1
+          fi
+
+          git remote add hf-space "https://DJ-Goanna-Coding:${HF_TOKEN}@huggingface.co/spaces/DJ-Goanna-Coding/APEX-PRIMUS-VIRTUS" || \
+            git remote set-url hf-space "https://DJ-Goanna-Coding:${HF_TOKEN}@huggingface.co/spaces/DJ-Goanna-Coding/APEX-PRIMUS-VIRTUS"
+
+          if git ls-remote --exit-code --heads hf-space main >/dev/null 2>&1; then
+            remote_main_sha="$(git ls-remote hf-space refs/heads/main | awk '{print $1}')"
+            echo "Detected existing Space history on main (for example, starter-template commits)."
+            echo "Replacing Space main with repository main using force-with-lease."
+            git push hf-space HEAD:main --force-with-lease=main:"${remote_main_sha}"
+          else
+            echo "No existing Space main branch detected; pushing normally."
+            git push hf-space HEAD:main
+          fi

@@ -2,7 +2,6 @@
 __pycache__/
 *.py[cod]
 *$py.class
-.env
 .venv
 venv/
 
@@ -32,14 +31,21 @@ build/
 *.log
 logs/
 
-# Environment
-.env.local
-.env.development
-.env.test
-.env.production
+# Environment and secrets
+.env
+.env.*
+!.env.example
+.envrc
+*.pem
+*.key
+*.p12
+*.pfx
+secrets*.json
 
 # Testing
 coverage/
+.coverage
+.coverage.*
 .nyc_output/
 
 # Misc

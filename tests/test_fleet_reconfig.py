@@ -1,376 +1,264 @@
-#!/usr/bin/env python3
-"""
-🦅 Fleet Reconfiguration Tests - Vortex V2
-Tests for 2 Piranha / 4 Harvester / 1 Sniper split and enhanced sync-guard
-"""
-
-import sys
-import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-import asyncio
 import time
-from datetime import datetime
-from unittest.mock import Mock, AsyncMock, patch
-import ccxt.async_support as ccxt
+from unittest.mock import AsyncMock, Mock, patch
 
-# Import VortexBerserker
+import pytest
+
 from backend.services.vortex import VortexBerserker
 
-print("=" * 80)
-print("🦅 VORTEX V2 FLEET RECONFIGURATION TESTS")
-print("=" * 80)
 
-# ============================================================================
-# TEST 1: Fleet Configuration - 2 Piranhas / 4 Harvesters / 1 Sniper
-# ============================================================================
-print("\n" + "=" * 80)
-print("TEST 1: Fleet Configuration - 2 Piranhas / 4 Harvesters / 1 Sniper")
-print("=" * 80)
+def _build_ohlcv(prices, volumes=None):
+    volumes = volumes or [100] * len(prices)
+    return [
+        [index, price, price, price, price, volume]
+        for index, (price, volume) in enumerate(zip(prices, volumes), start=1)
+    ]
 
-def test_fleet_configuration():
-    vortex = VortexBerserker()
-    
-    # Verify Piranha slots
-    if vortex.PIRANHA_SLOTS == [1, 2]:
-        print(f"✅ PASS - PIRANHA_SLOTS = {vortex.PIRANHA_SLOTS}")
-        piranha_pass = True
-    else:
-        print(f"❌ FAIL - PIRANHA_SLOTS = {vortex.PIRANHA_SLOTS} (expected [1, 2])")
-        piranha_pass = False
-    
-    # Verify Harvester slots
-    if vortex.HARVESTER_SLOTS == [3, 4, 5, 6]:
-        print(f"✅ PASS - HARVESTER_SLOTS = {vortex.HARVESTER_SLOTS}")
-        harvester_pass = True
-    else:
-        print(f"❌ FAIL - HARVESTER_SLOTS = {vortex.HARVESTER_SLOTS} (expected [3, 4, 5, 6])")
-        harvester_pass = False
-    
-    # Verify Sniper slot
-    if vortex.SNIPER_SLOT == [7]:
-        print(f"✅ PASS - SNIPER_SLOT = {vortex.SNIPER_SLOT}")
-        sniper_pass = True
-    else:
-        print(f"❌ FAIL - SNIPER_SLOT = {vortex.SNIPER_SLOT} (expected [7])")
-        sniper_pass = False
-    
-    return piranha_pass and harvester_pass and sniper_pass
 
-test1_pass = test_fleet_configuration()
+@pytest.fixture
+def vortex():
+    with patch("backend.services.vortex.ccxt.mexc", return_value=Mock(name="mexc")), patch(
+        "backend.services.vortex.HfApi", return_value=Mock(name="hf_api")
+    ):
+        return VortexBerserker()
 
-# ============================================================================
-# TEST 2: Slot Assignment - Piranha First
-# ============================================================================
-print("\n" + "=" * 80)
-print("TEST 2: Slot Assignment - Piranha First")
-print("=" * 80)
 
-def test_slot_assignment():
-    vortex = VortexBerserker()
-    
-    # First slot should be Piranha slot 1
-    wing_type, slot_num = vortex.get_available_slot_type()
-    if wing_type == 'piranha' and slot_num == 1:
-        print(f"✅ PASS - First available slot: {wing_type} {slot_num}")
-    else:
-        print(f"❌ FAIL - First available slot: {wing_type} {slot_num} (expected piranha 1)")
-        return False
-    
-    # Fill all Piranha slots (1-2)
-    vortex.active_trades[1] = {'slot': 1, 'wing': 'piranha', 'symbol': 'BTC/USDT'}
-    vortex.active_trades[2] = {'slot': 2, 'wing': 'piranha', 'symbol': 'ETH/USDT'}
-    
-    # Next should be Harvester slot 3
-    wing_type, slot_num = vortex.get_available_slot_type()
-    if wing_type == 'harvester' and slot_num == 3:
-        print(f"✅ PASS - After piranhas full, next slot: {wing_type} {slot_num}")
-    else:
-        print(f"❌ FAIL - After piranhas full, next slot: {wing_type} {slot_num} (expected harvester 3)")
-        return False
-    
-    # Fill all Harvester slots (3-6)
-    vortex.active_trades[3] = {'slot': 3, 'wing': 'harvester', 'symbol': 'BNB/USDT'}
-    vortex.active_trades[4] = {'slot': 4, 'wing': 'harvester', 'symbol': 'SOL/USDT'}
-    vortex.active_trades[5] = {'slot': 5, 'wing': 'harvester', 'symbol': 'ADA/USDT'}
-    vortex.active_trades[6] = {'slot': 6, 'wing': 'harvester', 'symbol': 'DOT/USDT'}
-    
-    # Next should be Sniper slot 7
-    wing_type, slot_num = vortex.get_available_slot_type()
-    if wing_type == 'sniper' and slot_num == 7:
-        print(f"✅ PASS - After piranhas and harvesters full, next slot: {wing_type} {slot_num}")
-    else:
-        print(f"❌ FAIL - After piranhas and harvesters full, next slot: {wing_type} {slot_num} (expected sniper 7)")
-        return False
-    
-    # Fill Sniper slot
-    vortex.active_trades[7] = {'slot': 7, 'wing': 'sniper', 'symbol': 'MATIC/USDT'}
-    
-    # Should be no slots available
-    wing_type, slot_num = vortex.get_available_slot_type()
-    if wing_type is None and slot_num is None:
-        print(f"✅ PASS - All 7 slots full, no available slots")
-        return True
-    else:
-        print(f"❌ FAIL - Expected no slots, got: {wing_type} {slot_num}")
-        return False
+def test_fleet_configuration(vortex):
+    assert vortex.PIRANHA_SLOTS == [1, 2]
+    assert vortex.HARVESTER_SLOTS == [3, 4, 5, 6]
+    assert vortex.SNIPER_SLOT == [7]
 
-test2_pass = test_slot_assignment()
 
-# ============================================================================
-# TEST 3: PENGUIN Pre-Blacklisted
-# ============================================================================
-print("\n" + "=" * 80)
-print("TEST 3: PENGUIN Pre-Blacklisted")
-print("=" * 80)
+def test_active_slots_preserve_legacy_symbol_writes_without_corrupting_v2_state(vortex):
+    canonical_trade = {
+        "symbol": "BTC/USDT",
+        "entry": 50000.0,
+        "qty": 0.001,
+        "time": time.time(),
+        "wing": vortex.WING_PIRANHA,
+        "slot": 1,
+        "peak_profit": 0.0,
+    }
+    vortex.active_trades[1] = canonical_trade.copy()
 
-async def test_penguin_blacklisted():
-    vortex = VortexBerserker()
-    
-    # Verify PENGUIN/USDT is pre-blacklisted
-    if 'PENGUIN/USDT' in vortex.blacklisted:
-        print(f"✅ PASS - PENGUIN/USDT pre-blacklisted")
-        print(f"   Blacklisted symbols: {vortex.blacklisted}")
-    else:
-        print(f"❌ FAIL - PENGUIN/USDT not in blacklist")
-        print(f"   Blacklisted symbols: {vortex.blacklisted}")
-        return False
-    
-    # Mock the exchange
-    vortex.mexc = Mock()
-    vortex.mexc.fetch_tickers = AsyncMock(return_value={
-        'BTC/USDT': {
-            'last': 50000,
-            'quoteVolume': 1000000,
-            'percentage': 5.0,
-            'open': 49000
-        },
-        'PENGUIN/USDT': {
-            'last': 0.032,
-            'quoteVolume': 600000,
-            'percentage': 25.0,  # High percentage, but should be filtered
-            'open': 0.025
-        },
-        'ETH/USDT': {
-            'last': 3000,
-            'quoteVolume': 800000,
-            'percentage': 3.0,
-            'open': 2900
+    vortex.active_slots["BTC/USDT"] = {
+        "entry": 49000.0,
+        "qty": 0.25,
+        "time": time.time(),
+        "wing": vortex.WING_HARVESTER,
+        "slot": 99,
+        "peak_profit": 0.0,
+    }
+
+    assert vortex.active_trades[1] == canonical_trade
+    assert vortex.active_trades[1]["slot"] == 1
+    assert vortex.active_slots["BTC/USDT"]["slot"] == 99
+    assert vortex.get_available_slot_type() == (vortex.WING_PIRANHA, 2)
+
+
+@pytest.mark.asyncio
+async def test_execute_exit_supports_legacy_active_slots_without_touching_canonical_slots(vortex, tmp_path):
+    vortex.shadow_path = str(tmp_path)
+    vortex.active_trades[1] = {
+        "symbol": "BTC/USDT",
+        "entry": 50000.0,
+        "qty": 0.001,
+        "time": time.time() - 10,
+        "wing": vortex.WING_PIRANHA,
+        "slot": 1,
+        "peak_profit": 0.0,
+    }
+    vortex.active_slots["ETH/USDT"] = {
+        "symbol": "ETH/USDT",
+        "entry": 3000.0,
+        "qty": 0.5,
+        "time": time.time() - 10,
+        "wing": vortex.WING_HARVESTER,
+        "slot": 42,
+        "peak_profit": 0.0,
+    }
+
+    exchange = Mock()
+    exchange.fetch_balance = AsyncMock(return_value={"ETH": {"free": 0.5}})
+    exchange.create_market_sell_order = AsyncMock(return_value={"id": "sell"})
+    vortex.exchange = exchange
+
+    await vortex.execute_exit("ETH/USDT", 0.5, "Legacy Exit")
+
+    exchange.create_market_sell_order.assert_awaited_once_with("ETH/USDT", 0.5)
+    assert 1 in vortex.active_trades
+    assert "ETH/USDT" not in vortex.active_slots
+
+
+def test_exchange_and_mexc_attributes_share_one_handle(vortex):
+    first_exchange = Mock(name="first_exchange")
+    second_exchange = Mock(name="second_exchange")
+
+    vortex.exchange = first_exchange
+    assert vortex.mexc is first_exchange
+
+    vortex.mexc = second_exchange
+    assert vortex.exchange is second_exchange
+
+
+@pytest.mark.asyncio
+async def test_exchange_patch_is_honored_by_market_entry_and_legacy_candle_methods(vortex):
+    exchange = Mock()
+    exchange.fetch_tickers = AsyncMock(
+        return_value={
+            "BTC/USDT": {
+                "last": 10.0,
+                "open": 9.0,
+                "percentage": 8.0,
+                "quoteVolume": 6_000_000,
+            }
         }
-    })
-    
-    # Fetch market data
-    market_data, sniper_targets = await vortex._scan_market()
-    
-    # Extract symbols from market data
-    symbols = [ticker['symbol'] for ticker in market_data]
-    
-    # Verify PENGUIN is filtered out
-    if 'PENGUIN/USDT' not in symbols:
-        print("✅ PASS - PENGUIN/USDT filtered from market scan")
-        print(f"   Market symbols: {symbols}")
-        return True
-    else:
-        print("❌ FAIL - PENGUIN/USDT still in market scan")
-        print(f"   Market symbols: {symbols}")
-        return False
-
-result = asyncio.run(test_penguin_blacklisted())
-test3_pass = result
-
-# ============================================================================
-# TEST 4: Sync-Guard Balance Verification (Error 30005)
-# ============================================================================
-print("\n" + "=" * 80)
-print("TEST 4: Sync-Guard Balance Verification (Error 30005)")
-print("=" * 80)
-
-async def test_sync_guard_balance_verification():
-    vortex = VortexBerserker()
-    
-    test_symbol = "BTC/USDT"
-    test_slot = 1
-    
-    # Mock the exchange with error 30005
-    vortex.mexc = Mock()
-    vortex.mexc.create_market_sell_order = AsyncMock(
-        side_effect=ccxt.ExchangeError("mexc {'code': '30005', 'msg': 'Oversold'}")
     )
-    
-    # Add a test position
-    vortex.active_trades[test_slot] = {
-        'symbol': test_symbol,
-        'entry': 50000,
-        'qty': 0.001,
-        'time': time.time(),
-        'wing': 'piranha',
-        'slot': test_slot,
-        'peak_profit': 0.0,
-        'peak': 50000,
-        'start_time': datetime.now().isoformat()
+    exchange.fetch_ohlcv = AsyncMock(
+        side_effect=[
+            _build_ohlcv(list(range(1, 56)), [100] * 54 + [500]),
+            _build_ohlcv([10.0, 10.1]),
+        ]
+    )
+    exchange.fetch_ticker = AsyncMock(return_value={"last": 10.0})
+    exchange.create_market_buy_order = AsyncMock(return_value={"id": "buy"})
+    vortex.exchange = exchange
+
+    movers, sniper_targets = await vortex._scan_market()
+    assert movers == [{"symbol": "BTC/USDT", "price": 10.0, "change": 8.0}]
+    assert sniper_targets == ["BTC/USDT"]
+
+    assert await vortex._analyze_sniper("BTC/USDT") is True
+
+    await vortex._fill_slot(1, "BTC/USDT", vortex.WING_PIRANHA)
+    assert vortex.active_trades[1]["entry"] == 10.0
+    assert vortex.active_trades[1]["qty"] == pytest.approx(vortex.base_stake / 10.0)
+
+    candles = await vortex.get_candle_data("BTC/USDT")
+
+    exchange.fetch_ticker.assert_awaited_once_with("BTC/USDT")
+    exchange.create_market_buy_order.assert_awaited_once()
+    assert exchange.create_market_buy_order.await_args.args[0] == "BTC/USDT"
+    assert exchange.create_market_buy_order.await_args.args[1] == pytest.approx(vortex.base_stake / 10.0)
+    exchange.fetch_ohlcv.assert_any_await("BTC/USDT", "5m", limit=55)
+    exchange.fetch_ohlcv.assert_any_await("BTC/USDT", timeframe="1m", limit=2)
+    assert list(candles["close"]) == [10.0, 10.1]
+
+
+@pytest.mark.asyncio
+async def test_exchange_patch_is_honored_by_exit_paths(vortex, tmp_path):
+    vortex.shadow_path = str(tmp_path)
+    trade = {
+        "symbol": "BTC/USDT",
+        "entry": 10.0,
+        "qty": 0.8,
+        "time": time.time() - 10,
+        "wing": vortex.WING_PIRANHA,
+        "slot": 1,
+        "peak_profit": 0.0,
     }
-    
-    # Test Case 1: Balance exists, should attempt force_exit
-    print("\n  Case 1: Balance exists (> 0)")
-    vortex.mexc.fetch_balance = AsyncMock(return_value={
-        'BTC': {
-            'free': 0.0005,
-            'used': 0,
-            'total': 0.0005
-        }
-    })
-    
-    # Track if force_exit is called
-    force_exit_called = False
-    original_force_exit = vortex.force_exit
-    
-    async def mock_force_exit(symbol, qty):
-        nonlocal force_exit_called
-        force_exit_called = True
-        print(f"    - force_exit called with symbol={symbol}, qty={qty}")
-        await original_force_exit(symbol, qty)
-    
-    vortex.force_exit = mock_force_exit
-    
-    # Try to exit - should catch error 30005, check balance, and call force_exit
-    await vortex._execute_sell(test_slot, vortex.active_trades[test_slot], "Test Exit")
-    
-    if force_exit_called:
-        print("  ✅ force_exit was called when balance > 0")
-    else:
-        print("  ❌ force_exit was NOT called when balance > 0")
-        return False
-    
-    # Verify slot was cleared
-    if test_slot not in vortex.active_trades:
-        print("  ✅ Slot cleared after balance verification")
-    else:
-        print("  ❌ Slot not cleared after balance verification")
-        return False
-    
-    # Test Case 2: Balance is 0, should just clear slot
-    print("\n  Case 2: Balance is 0")
-    vortex.active_trades[test_slot] = {
-        'symbol': test_symbol,
-        'entry': 50000,
-        'qty': 0.001,
-        'time': time.time(),
-        'wing': 'piranha',
-        'slot': test_slot,
-        'peak_profit': 0.0,
-        'peak': 50000,
-        'start_time': datetime.now().isoformat()
+    vortex.active_trades[1] = trade.copy()
+
+    exchange = Mock()
+    exchange.fetch_tickers = AsyncMock(return_value={"BTC/USDT": {"last": 10.1}})
+    exchange.fetch_balance = AsyncMock(
+        side_effect=[
+            {"BTC": {"free": 0.8}},
+            {"ETH": {"free": 0.5}},
+        ]
+    )
+    exchange.create_market_sell_order = AsyncMock(return_value={"id": "sell"})
+    vortex.exchange = exchange
+
+    await vortex._manage_exits()
+
+    exchange.fetch_tickers.assert_awaited_once_with(["BTC/USDT"])
+    exchange.create_market_sell_order.assert_any_await("BTC/USDT", 0.8)
+    assert 1 not in vortex.active_trades
+
+    manual_trade = {
+        "symbol": "ETH/USDT",
+        "entry": 20.0,
+        "qty": 0.5,
+        "time": time.time() - 10,
+        "wing": vortex.WING_HARVESTER,
+        "slot": 2,
+        "peak_profit": 0.0,
     }
-    
-    force_exit_called = False
-    vortex.mexc.fetch_balance = AsyncMock(return_value={
-        'BTC': {
-            'free': 0,
-            'used': 0,
-            'total': 0
+    vortex.active_trades[2] = manual_trade
+
+    await vortex._execute_sell(2, manual_trade, "Manual Exit")
+    await vortex.force_exit("SOL/USDT", 0.25)
+
+    exchange.create_market_sell_order.assert_any_await("ETH/USDT", 0.5)
+    exchange.create_market_sell_order.assert_any_await("SOL/USDT", 0.25)
+
+
+@pytest.mark.asyncio
+async def test_scan_market_requires_exact_usdt_quote(vortex):
+    exchange = Mock()
+    exchange.fetch_tickers = AsyncMock(
+        return_value={
+            "BTC/USDT": {
+                "last": 10.0,
+                "open": 9.5,
+                "percentage": 5.0,
+                "quoteVolume": 1_000_000,
+            },
+            "ETH/USDT:USDC": {
+                "last": 20.0,
+                "open": 19.0,
+                "percentage": 8.0,
+                "quoteVolume": 9_000_000,
+            },
+            "SOL/USDC": {
+                "last": 30.0,
+                "open": 29.0,
+                "percentage": 9.0,
+                "quoteVolume": 8_000_000,
+            },
         }
-    })
-    
-    # Try to exit - should catch error 30005, check balance (0), and clear slot
-    await vortex._execute_sell(test_slot, vortex.active_trades[test_slot], "Test Exit")
-    
-    if not force_exit_called:
-        print("  ✅ force_exit was NOT called when balance = 0")
-    else:
-        print("  ❌ force_exit was called when balance = 0")
-        return False
-    
-    # Verify slot was cleared
-    if test_slot not in vortex.active_trades:
-        print("  ✅ Slot cleared when balance = 0")
-        return True
-    else:
-        print("  ❌ Slot not cleared when balance = 0")
-        return False
+    )
+    vortex.exchange = exchange
 
-result = asyncio.run(test_sync_guard_balance_verification())
-test4_pass = result
+    movers, sniper_targets = await vortex._scan_market()
 
-# ============================================================================
-# TEST 5: Force Exit Method
-# ============================================================================
-print("\n" + "=" * 80)
-print("TEST 5: Force Exit Method")
-print("=" * 80)
+    assert [mover["symbol"] for mover in movers] == ["BTC/USDT"]
+    assert sniper_targets == []
 
-async def test_force_exit():
-    vortex = VortexBerserker()
-    
-    # Mock the exchange
-    vortex.mexc = Mock()
-    vortex.mexc.create_market_sell_order = AsyncMock()
-    
-    test_symbol = "BTC/USDT"
-    test_qty = 0.0005
-    
-    # Call force_exit
-    await vortex.force_exit(test_symbol, test_qty)
-    
-    # Verify sell order was called
-    if vortex.mexc.create_market_sell_order.called:
-        call_args = vortex.mexc.create_market_sell_order.call_args
-        if call_args[0][0] == test_symbol and call_args[0][1] == test_qty:
-            print(f"✅ PASS - force_exit called create_market_sell_order({test_symbol}, {test_qty})")
-            return True
-        else:
-            print(f"❌ FAIL - force_exit called with wrong args: {call_args}")
-            return False
-    else:
-        print("❌ FAIL - force_exit did not call create_market_sell_order")
-        return False
 
-result = asyncio.run(test_force_exit())
-test5_pass = result
+@pytest.mark.asyncio
+async def test_fill_slot_fetches_only_missing_prices_and_rejects_non_positive_values(vortex):
+    exchange = Mock()
+    exchange.fetch_ticker = AsyncMock(return_value={"last": 5.0})
+    exchange.create_market_buy_order = AsyncMock(return_value={"id": "buy"})
+    vortex.exchange = exchange
 
-# ============================================================================
-# TEST 6: Startup Banner Update
-# ============================================================================
-print("\n" + "=" * 80)
-print("TEST 6: Startup Banner Update")
-print("=" * 80)
+    await vortex._fill_slot(1, "BTC/USDT", vortex.WING_PIRANHA, price=None)
+    exchange.fetch_ticker.assert_awaited_once_with("BTC/USDT")
+    assert vortex.active_trades[1]["entry"] == 5.0
+    assert exchange.create_market_buy_order.await_args.args[0] == "BTC/USDT"
+    assert exchange.create_market_buy_order.await_args.args[1] == pytest.approx(vortex.base_stake / 5.0)
 
-def test_startup_banner():
-    """Test that startup banner is updated (manual verification from logs)"""
-    print("✅ PASS - Startup banner updated to: '🔥 VORTEX V2: 2 PIRANHAS // 4 HARVESTERS // 1 SNIPER'")
-    print("   (Manual verification: Check vortex.py start() method)")
-    return True
+    exchange.fetch_ticker.reset_mock()
+    exchange.create_market_buy_order.reset_mock()
+    await vortex._fill_slot(2, "ETH/USDT", vortex.WING_HARVESTER, price=2.5)
+    exchange.fetch_ticker.assert_not_awaited()
+    assert vortex.active_trades[2]["entry"] == 2.5
+    assert exchange.create_market_buy_order.await_args.args[0] == "ETH/USDT"
+    assert exchange.create_market_buy_order.await_args.args[1] == pytest.approx(vortex.base_stake / 2.5)
 
-test6_pass = test_startup_banner()
+    exchange.fetch_ticker.reset_mock()
+    exchange.create_market_buy_order.reset_mock()
+    await vortex._fill_slot(3, "XRP/USDT", vortex.WING_PIRANHA, price=0)
+    await vortex._fill_slot(4, "DOGE/USDT", vortex.WING_PIRANHA, price=-1)
+    exchange.fetch_ticker.assert_not_awaited()
+    exchange.create_market_buy_order.assert_not_awaited()
+    assert 3 not in vortex.active_trades
+    assert 4 not in vortex.active_trades
 
-# ============================================================================
-# SUMMARY
-# ============================================================================
-print("\n" + "=" * 80)
-print("VORTEX V2 FLEET RECONFIGURATION TEST SUITE SUMMARY")
-print("=" * 80)
-
-all_tests = [
-    ("Fleet Configuration (2/4/1 Split)", test1_pass),
-    ("Slot Assignment Logic", test2_pass),
-    ("PENGUIN Pre-Blacklisted", test3_pass),
-    ("Sync-Guard Balance Verification", test4_pass),
-    ("Force Exit Method", test5_pass),
-    ("Startup Banner Update", test6_pass)
-]
-
-passed = sum(1 for _, result in all_tests if result)
-total = len(all_tests)
-
-print(f"\n📊 Test Results: {passed}/{total} passed")
-for test_name, result in all_tests:
-    status = "✅ PASS" if result else "❌ FAIL"
-    print(f"   {status} - {test_name}")
-
-if passed == total:
-    print("\n🦅 Vortex V2 Fleet Reconfiguration: ALL TESTS PASSED")
-    print("=" * 80)
-    sys.exit(0)
-else:
-    print("\n⚠️ Some tests failed - review implementation")
-    print("=" * 80)
-    sys.exit(1)
+    exchange.fetch_ticker = AsyncMock(return_value={"last": 0.0})
+    exchange.create_market_buy_order.reset_mock()
+    await vortex._fill_slot(5, "ADA/USDT", vortex.WING_PIRANHA, price=None)
+    exchange.fetch_ticker.assert_awaited_once_with("ADA/USDT")
+    exchange.create_market_buy_order.assert_not_awaited()
+    assert 5 not in vortex.active_trades

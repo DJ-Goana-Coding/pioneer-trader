@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field, ValidationError
 from backend.core.config import settings
 from backend.core.security import get_current_admin
 from backend.services.agent_audit import agent_audit
-from backend.services.vortex import VortexOmega
+from backend.services.vortex import VortexBerserker as VortexOmega
 
 
 # --- Lifespan: initialise app.state services so trade/strategy routers work

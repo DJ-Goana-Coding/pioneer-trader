@@ -1,5 +1,5 @@
 from backend.core.personas import PERSONA_REGISTRY, detect_persona
-from backend.services.vortex import VortexOmega
+from backend.services.vortex import VortexBerserker as VortexOmega
 from backend.services.knowledge import knowledge_base
 class SkinWalkerBrain:
     def __init__(self):
